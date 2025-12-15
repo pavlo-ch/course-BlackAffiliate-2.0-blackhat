@@ -2,11 +2,16 @@
 
 import { useState, createContext, useContext, useEffect } from 'react';
 import CourseNavigation from '@/components/CourseNavigation';
+import CourseSearch from '@/components/CourseSearch';
+import AnnouncementsButton from '@/components/AnnouncementsButton';
+import AnnouncementsList from '@/components/AnnouncementsList';
 import { useAuth } from '@/contexts/AuthContext';
 import AccessControl from '@/components/AccessControl';
 import { Menu, X, Settings, LogOut, Home, Map, Tag, Wrench } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+import { AnnouncementWithReadStatus } from '@/types/announcements';
 
 interface NavLesson {
   id: string;
@@ -50,6 +55,9 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
   const router = useRouter();
   const pathname = usePathname();
   const currentLessonId = pathname.split('/').pop() || '';
+  const [announcements, setAnnouncements] = useState<AnnouncementWithReadStatus[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showAnnouncementsList, setShowAnnouncementsList] = useState(false);
 
   const isLevel6 = user?.access_level === 6;
 
@@ -95,6 +103,66 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
   const hasPrevious = isLevel6 ? false : currentLessonIndex > 0;
   const hasNext = isLevel6 ? false : currentLessonIndex < allLessons.length - 1;
 
+  useEffect(() => {
+    const loadAnnouncements = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        if (!token) return;
+        const res = await fetch('/api/announcements', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data?.success) {
+          setAnnouncements(data.announcements);
+          setUnreadCount(data.unread_count);
+        }
+      } catch (e) {
+        console.error('Announcements load error:', e);
+      }
+    };
+    loadAnnouncements();
+  }, []);
+
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+
+      await fetch(`/api/announcements/${id}/mark-read`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setAnnouncements(prev => prev.map(a => a.id === id ? { ...a, is_read: true } : a));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Error marking announcement as read:', error);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+
+      const unreadIds = announcements.filter(a => !a.is_read).map(a => a.id);
+      await Promise.all(unreadIds.map(id => 
+        fetch(`/api/announcements/${id}/mark-read`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ));
+
+      setAnnouncements(prev => prev.map(a => ({ ...a, is_read: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+    }
+  };
+
   return (
     <LessonContext.Provider value={{ courseData, currentLessonId, handlePreviousLesson, handleNextLesson, hasPrevious, hasNext }}>
       <div className="min-h-[100svh] bg-background flex relative">
@@ -115,6 +183,7 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
               <Home className="w-4 h-4" />
               Home
             </Link>
+            
             <CourseNavigation 
               courseData={courseData}
               currentLessonId={currentLessonId}
@@ -202,23 +271,56 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
         </div>
 
         <div className="flex-1 flex flex-col">
-          <div className="lg:hidden bg-[#0f1012] border-b border-gray-700 p-4 flex justify-between items-center relative z-10">
-            <button onClick={() => setIsMobileNavOpen(true)} className="text-white hover:text-gray-300">
-              <Menu className="w-6 h-6" />
-            </button>
-            <Link 
-              href="/" 
-              className="text-white hover:text-red-400 transition-colors" 
-              title="Home"
-            >
-              <Home className="w-6 h-6" />
-            </Link>
+          <div className="bg-[#0f1012] border-b border-gray-700 relative z-[60] lg:h-[61px]">
+            <div className="max-w-7xl mx-auto px-4 lg:py-2">
+              <div className="flex items-center justify-between gap-4">
+                <div className="lg:hidden flex-shrink-0">
+                  <button 
+                    onClick={() => setIsMobileNavOpen(true)} 
+                    className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                    aria-label="Open navigation"
+                  >
+                    <Menu className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                <div className="flex-1 max-w-2xl mx-auto">
+                  <CourseSearch />
+                </div>
+                
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="lg:hidden">
+                    <Link 
+                      href="/" 
+                      className="p-2 text-gray-400 hover:text-red-400 hover:bg-gray-800 rounded-lg transition-colors" 
+                      title="Home"
+                    >
+                      <Home className="w-5 h-5" />
+                    </Link>
+                  </div>
+                  
+                  <AnnouncementsButton
+                    unreadCount={unreadCount}
+                    onClick={() => setShowAnnouncementsList(true)}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="flex-1">
+          <div className="flex-1 overflow-y-auto">
             {children}
           </div>
         </div>
+
+        {showAnnouncementsList && (
+          <AnnouncementsList
+            announcements={announcements}
+            onMarkAsRead={handleMarkAsRead}
+            onMarkAllAsRead={handleMarkAllAsRead}
+            onClose={() => setShowAnnouncementsList(false)}
+          />
+        )}
       </div>
     </LessonContext.Provider>
   );

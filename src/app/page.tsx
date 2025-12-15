@@ -11,6 +11,7 @@ import AnnouncementsButton from '@/components/AnnouncementsButton';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
 import AnnouncementsList from '@/components/AnnouncementsList';
 import PushNotificationSettings from '@/components/PushNotificationSettings';
+import CourseSearch from '@/components/CourseSearch';
 import { AnnouncementWithReadStatus } from '@/types/announcements';
 import { supabase } from '@/lib/supabase';
 
@@ -119,18 +120,22 @@ export default function Home() {
                     />
                   </div>
                 </div>
-                <p className="text-base md:text-xl text-gray-300 max-w-3xl mx-auto mb-4 px-4">
+                <p className="text-base md:text-xl text-gray-300 max-w-3xl mx-auto mb-6 px-4">
                   Traffic arbitrage and affiliate marketing training program
                 </p>
+                
                 {user?.access_level !== 4 && (
-                  <div className="text-white mb-8 md:mb-12">
+                  <div className="text-white mb-8 md:mb-10">
                     <span className="text-sm text-gray-300">Package: </span>
                     <span className="text-sm font-bold text-white">
                       {user?.access_level === 1 ? 'Basic' : user?.access_level === 2 ? 'Premium' : user?.access_level === 3 ? 'VIP' : user?.access_level === 6 ? 'Creative Push Only' : ''}
                     </span>
                   </div>
                 )}
-                
+
+                <div className="flex justify-center mb-6">
+                  <CourseSearch />
+                </div>
                 <div className="flex flex-wrap justify-center gap-4 mb-8 md:mb-12">
                   {user?.access_level !== 4 && (
                     <AccessControl requiredLevel={3} fallback={
@@ -188,6 +193,8 @@ export default function Home() {
                   </AccessControl>
                 </div>
               </div>
+              
+                
 
               <div className="grid gap-4 md:gap-6 max-w-4xl mx-auto px-4">
                 {courseData.map((section, index) => {

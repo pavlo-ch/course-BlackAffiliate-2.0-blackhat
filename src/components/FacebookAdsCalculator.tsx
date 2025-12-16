@@ -66,18 +66,18 @@ export default function FacebookAdsCalculator() {
   };
 
   const calculateMetrics = useMemo((): CalculatedMetrics => {
-    const cpcMin = payout / ratioRanges.cpc.max;
-    const cpcMid = payout / 40;
-    const cpcMax = payout / ratioRanges.cpc.min;
-    const cpiMin = payout / ratioRanges.cpi.max;
-    const cpiMid = payout / 10;
-    const cpiMax = payout / ratioRanges.cpi.min;
-    const cprMin = payout / ratioRanges.cpr.max;
-    const cprMid = payout / 5;
-    const cprMax = payout / ratioRanges.cpr.min;
-    
     const cpaDivisor = 1 + (roi / 100);
     const cpa = payout / cpaDivisor;
+
+    const cpcMin = cpa / ratioRanges.cpc.max;
+    const cpcMid = cpa / 40;
+    const cpcMax = cpa / ratioRanges.cpc.min;
+    const cpiMin = cpa / ratioRanges.cpi.max;
+    const cpiMid = cpa / 10;
+    const cpiMax = cpa / ratioRanges.cpi.min;
+    const cprMin = cpa / ratioRanges.cpr.max;
+    const cprMid = cpa / 5;
+    const cprMax = cpa / ratioRanges.cpr.min;
 
     const cpcRatioMin = ratioRanges.cpc.min;
     const cpcRatioMid = 40;
@@ -229,23 +229,13 @@ export default function FacebookAdsCalculator() {
           <h2 className="text-xl font-semibold text-white">CALCULATED METRICS</h2>
         </div>
 
-        <div className="bg-blue-900/20 border border-blue-600/30 rounded-lg p-4 mb-6">
-          <p className="text-sm text-gray-300 leading-relaxed mb-3">
-            <span className="font-semibold text-blue-400">Note:</span> With the same CPA and ROI, you may have different costs for clicks, installs, and registrations. This depends on <span className="font-medium">Facebook optimization</span> (targeting, creatives, bidding strategy) and <span className="font-medium">funnel performance</span> (conversion rates between stages). Better optimization can improve click-to-install and install-to-registration ratios, reducing costs at each stage while maintaining the same final CPA.
-          </p>
-          <div className="text-xs text-gray-400 space-y-1 pt-2 border-t border-blue-600/30">
-            <p><span className="font-semibold">Ratio (X:1)</span> means how many clicks/installs/registrations you need to get 1 deposit. Lower ratio = better performance.</p>
-            <p><span className="font-semibold">Minimum/Middle/Maximum</span> represent different optimization scenarios - from best case (minimum costs) to worst case (maximum costs) performance.</p>
-          </div>
-        </div>
-
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
               <tr className="border-b border-gray-700">
                 <th className="text-left py-4 px-4 text-sm font-medium text-gray-400">Metric</th>
-                <th className="text-center py-4 px-4 text-sm font-medium text-gray-400">Minimum</th>
-                <th className="text-center py-4 px-4 text-sm font-medium text-gray-400">Middle</th>
+                <th className="text-center py-4 px-4 text-sm font-medium text-gray-400 border-x border-gray-700">Minimum</th>
+                <th className="text-center py-4 px-4 text-sm font-medium text-gray-400 border-r border-gray-700">Middle</th>
                 <th className="text-center py-4 px-4 text-sm font-medium text-gray-400">Maximum</th>
               </tr>
             </thead>
@@ -255,13 +245,13 @@ export default function FacebookAdsCalculator() {
                   CPC (Cost per Click)
                   <div className="text-xs text-gray-500 font-normal mt-1">Price per click on your ad</div>
                 </td>
-                <td className="py-4 px-4 text-center">
+                <td className="py-4 px-4 text-center border-x border-gray-700">
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-white font-medium">{formatCurrency(calculateMetrics.cpcMin)}</span>
                     <span className="text-xs text-gray-500">Ratio {calculateMetrics.cpcRatioMax}:1</span>
                   </div>
                 </td>
-                <td className="py-4 px-4 text-center">
+                <td className="py-4 px-4 text-center border-r border-gray-700">
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-white font-medium">{formatCurrency(calculateMetrics.cpcMid)}</span>
                     <span className="text-xs text-gray-500">Ratio {calculateMetrics.cpcRatioMid}:1</span>
@@ -279,13 +269,13 @@ export default function FacebookAdsCalculator() {
                   CPI (Cost per Install)
                   <div className="text-xs text-gray-500 font-normal mt-1">Price per app installation</div>
                 </td>
-                <td className="py-4 px-4 text-center">
+                <td className="py-4 px-4 text-center border-x border-gray-700">
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-white font-medium">{formatCurrency(calculateMetrics.cpiMin)}</span>
                     <span className="text-xs text-gray-500">Ratio {calculateMetrics.cpiRatioMax}:1</span>
                   </div>
                 </td>
-                <td className="py-4 px-4 text-center">
+                <td className="py-4 px-4 text-center border-r border-gray-700">
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-white font-medium">{formatCurrency(calculateMetrics.cpiMid)}</span>
                     <span className="text-xs text-gray-500">Ratio {calculateMetrics.cpiRatioMid}:1</span>
@@ -303,13 +293,13 @@ export default function FacebookAdsCalculator() {
                   CPR (Cost per Registration)
                   <div className="text-xs text-gray-500 font-normal mt-1">Price per user registration</div>
                 </td>
-                <td className="py-4 px-4 text-center">
+                <td className="py-4 px-4 text-center border-x border-gray-700">
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-white font-medium">{formatCurrency(calculateMetrics.cprMin)}</span>
                     <span className="text-xs text-gray-500">Ratio {calculateMetrics.cprRatioMax}:1</span>
                   </div>
                 </td>
-                <td className="py-4 px-4 text-center">
+                <td className="py-4 px-4 text-center border-r border-gray-700">
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-white font-medium">{formatCurrency(calculateMetrics.cprMid)}</span>
                     <span className="text-xs text-gray-500">Ratio {calculateMetrics.cprRatioMid}:1</span>
@@ -322,18 +312,29 @@ export default function FacebookAdsCalculator() {
                   </div>
                 </td>
               </tr>
+              <tr className="border-b border-gray-800 hover:bg-blue-900/20 transition-colors bg-blue-900/10">
+                <td className="py-4 px-4 text-sm text-blue-200 font-medium">
+                  CPA (Cost per Acquisition)
+                  <div className="text-xs text-blue-400 font-normal mt-1">Final cost per deposit</div>
+                </td>
+                <td colSpan={3} className="py-4 px-4">
+                  <div className="text-center">
+                    <span className="text-blue-300 font-medium">{formatCurrency(calculateMetrics.cpaMin)}</span>
+                  </div>
+                </td>
+              </tr>
               <tr className="border-b border-gray-800 hover:bg-gray-900/50 transition-colors">
                 <td className="py-4 px-4 text-sm text-gray-300 font-medium">
                   Click → Install
                   <div className="text-xs text-gray-500 font-normal mt-1">Conversion rate from clicks to installs</div>
                 </td>
-                <td className="py-4 px-4 text-center">
+                <td className="py-4 px-4 text-center border-x border-gray-700">
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-white font-medium">{formatPercent(calculateMetrics.clickToInstallRateMin)}</span>
                     <span className="text-xs text-gray-500">Ratio {formatRatio(calculateMetrics.clickToInstallRatioMin)}</span>
                   </div>
                 </td>
-                <td className="py-4 px-4 text-center">
+                <td className="py-4 px-4 text-center border-r border-gray-700">
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-white font-medium">{formatPercent(calculateMetrics.clickToInstallRateMid)}</span>
                     <span className="text-xs text-gray-500">Ratio {formatRatio(calculateMetrics.clickToInstallRatioMid)}</span>
@@ -351,13 +352,13 @@ export default function FacebookAdsCalculator() {
                   Install → Registration
                   <div className="text-xs text-gray-500 font-normal mt-1">Conversion rate from installs to registrations</div>
                 </td>
-                <td className="py-4 px-4 text-center">
+                <td className="py-4 px-4 text-center border-x border-gray-700">
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-white font-medium">{formatPercent(calculateMetrics.installToRegistrationRateMin)}</span>
                     <span className="text-xs text-gray-500">Ratio {formatRatio(calculateMetrics.installToRegistrationRatioMin)}</span>
                   </div>
                 </td>
-                <td className="py-4 px-4 text-center">
+                <td className="py-4 px-4 text-center border-r border-gray-700">
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-white font-medium">{formatPercent(calculateMetrics.installToRegistrationRateMid)}</span>
                     <span className="text-xs text-gray-500">Ratio {formatRatio(calculateMetrics.installToRegistrationRatioMid)}</span>
@@ -375,13 +376,13 @@ export default function FacebookAdsCalculator() {
                   Registration → Deposit
                   <div className="text-xs text-gray-500 font-normal mt-1">Conversion rate from registrations to deposits</div>
                 </td>
-                <td className="py-4 px-4 text-center">
+                <td className="py-4 px-4 text-center border-x border-gray-700">
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-white font-medium">{formatPercent(calculateMetrics.registrationToDepositRateMin)}</span>
                     <span className="text-xs text-gray-500">Ratio {formatRatio(calculateMetrics.registrationToDepositRatioMin)}</span>
                   </div>
                 </td>
-                <td className="py-4 px-4 text-center">
+                <td className="py-4 px-4 text-center border-r border-gray-700">
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-white font-medium">{formatPercent(calculateMetrics.registrationToDepositRateMid)}</span>
                     <span className="text-xs text-gray-500">Ratio {formatRatio(calculateMetrics.registrationToDepositRatioMid)}</span>
@@ -394,18 +395,18 @@ export default function FacebookAdsCalculator() {
                   </div>
                 </td>
               </tr>
-              <tr className="border-b border-gray-800 hover:bg-gray-900/50 transition-colors">
+              <tr className="hover:bg-gray-900/50 transition-colors">
                 <td className="py-4 px-4 text-sm text-gray-300 font-medium">
                   Click → Deposit (Overall CR)
                   <div className="text-xs text-gray-500 font-normal mt-1">Overall conversion rate from clicks to deposits</div>
                 </td>
-                <td className="py-4 px-4 text-center">
+                <td className="py-4 px-4 text-center border-x border-gray-700">
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-white font-medium">{formatPercent(calculateMetrics.clickToDepositRateMin)}</span>
                     <span className="text-xs text-gray-500">Ratio {formatRatio(calculateMetrics.clickToDepositRatioMin)}</span>
                   </div>
                 </td>
-                <td className="py-4 px-4 text-center">
+                <td className="py-4 px-4 text-center border-r border-gray-700">
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-white font-medium">{formatPercent(calculateMetrics.clickToDepositRateMid)}</span>
                     <span className="text-xs text-gray-500">Ratio {formatRatio(calculateMetrics.clickToDepositRatioMid)}</span>
@@ -417,35 +418,19 @@ export default function FacebookAdsCalculator() {
                     <span className="text-xs text-gray-500">Ratio {formatRatio(calculateMetrics.clickToDepositRatioMax)}</span>
                   </div>
                 </td>
-              </tr>
-              <tr className="border-b border-gray-800 hover:bg-gray-900/50 transition-colors">
-                <td className="py-4 px-4 text-sm text-gray-300 font-medium">
-                  CPA (Cost per Acquisition)
-                  <div className="text-xs text-gray-500 font-normal mt-1">Final cost per deposit</div>
-                </td>
-                <td colSpan={3} className="py-4 px-4">
-                  <div className="text-center">
-                    <span className="text-white font-medium">{formatCurrency(calculateMetrics.cpaMin)}</span>
-                  </div>
-                </td>
-              </tr>
-              <tr className="hover:bg-gray-900/50 transition-colors">
-                <td className="py-4 px-4 text-sm text-gray-300 font-medium">
-                  ROI (Return on Investment)
-                  <div className="text-xs text-gray-500 font-normal mt-1">Profit percentage</div>
-                </td>
-                <td colSpan={3} className="py-4 px-4">
-                  <div className="text-center">
-                    <span className={`font-medium ${
-                      calculateMetrics.roi >= 50 ? 'text-green-400' : calculateMetrics.roi >= 25 ? 'text-yellow-400' : 'text-red-400'
-                    }`}>
-                      {calculateMetrics.roi}%
-                    </span>
-                  </div>
-                </td>
-              </tr>
+              </tr> 
             </tbody>
           </table>
+
+          <div className="bg-blue-900/20 border border-blue-600/30 rounded-lg p-4 mt-6">
+            <p className="text-sm text-gray-300 leading-relaxed mb-3">
+              <span className="font-semibold text-blue-400">Note:</span> With the same CPA and ROI, you may have different costs for clicks, installs, and registrations. This depends on <span className="font-medium">Facebook optimization</span> (targeting, creatives, bidding strategy) and <span className="font-medium">funnel performance</span> (conversion rates between stages). Better optimization can improve click-to-install and install-to-registration ratios, reducing costs at each stage while maintaining the same final CPA.
+            </p>
+            <div className="text-xs text-gray-400 space-y-1 pt-2 border-t border-blue-600/30">
+              <p><span className="font-semibold">Ratio (X:1)</span> means how many clicks/installs/registrations you need to get 1 deposit. Lower ratio = better performance.</p>
+              <p><span className="font-semibold">Minimum/Middle/Maximum</span> represent different optimization scenarios - from best case (minimum costs) to worst case (maximum costs) performance.</p>
+            </div>
+          </div>
         </div>
       </div>
 

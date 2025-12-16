@@ -192,7 +192,7 @@ export default function LessonContent({ lesson, onPreviousLesson, onNextLesson, 
 
   return (
     <div className='flex-1 overflow-y-auto flex flex-col min-h-full'>
-      <div className="max-w-4xl mx-auto pt-6 px-4 sm:t-8 w-full flex-1">
+      <div className="max-w-5xl mx-auto pt-6 px-4 sm:t-8 w-full flex-1">
         <div className="absolute top-0 left-0 bottom-0 w-20 md:w-32 bg-gradient-to-r from-red-500/15 via-red-400/5 to-transparent lg:left-[320px]"></div>
         <div className="absolute top-0 right-0 bottom-0 w-20 md:w-32 bg-gradient-to-l from-red-500/15 via-red-400/5 to-transparent "></div>
       
@@ -253,7 +253,7 @@ export default function LessonContent({ lesson, onPreviousLesson, onNextLesson, 
             </div>
         )}
         <div className="prose prose-lg max-w-none dark:prose-invert">
-          <div className="bg-[#0f1012] border border-gray-800 rounded-lg p-6">
+          <div className="bg-[#0f1012] border border-gray-800 rounded-lg p-6 md:p-8">
             <h3 className="text-base font-semibold text-primary mt-0">Lesson Overview</h3>
             
             <div className="text-gray-300 leading-relaxed prose prose-invert max-w-none">
@@ -336,6 +336,27 @@ export default function LessonContent({ lesson, onPreviousLesson, onNextLesson, 
                     ),
                     em: ({node, ...props}) => (
                       <em className="text-gray-200 italic" {...props} />
+                    ),
+                    ul: ({node, ...props}) => (
+                      <ul className="list-disc list-inside mb-4 space-y-2 text-gray-300" {...props} />
+                    ),
+                    ol: ({node, ...props}) => (
+                      <ol className="list-decimal list-inside mb-4 space-y-2 text-gray-300" {...props} />
+                    ),
+                    li: ({node, ...props}) => (
+                      <li className="ml-4 text-gray-300" {...props} />
+                    ),
+                    code: ({node, inline, ...props}: any) => {
+                      if (inline) {
+                        return <code className="bg-gray-800 text-green-400 px-1.5 py-0.5 rounded text-sm font-mono" {...props} />;
+                      }
+                      return <code className="block bg-gray-900 text-gray-200 p-4 rounded-lg overflow-x-auto text-sm font-mono mb-4" {...props} />;
+                    },
+                    pre: ({node, ...props}) => (
+                      <pre className="bg-gray-900 rounded-lg p-4 overflow-x-auto mb-4" {...props} />
+                    ),
+                    a: ({node, ...props}: any) => (
+                      <a className="text-primary hover:text-primary/80 underline" {...props} />
                     ),
                     table: ({node, ...props}) => (
                       <div className="my-6 overflow-x-auto" style={{maxWidth: '100vw', marginLeft: '-2rem', marginRight: '-2rem', paddingLeft: '2rem', paddingRight: '2rem'}}>

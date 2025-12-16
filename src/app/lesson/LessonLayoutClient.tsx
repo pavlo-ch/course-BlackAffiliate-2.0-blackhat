@@ -133,22 +133,45 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
         console.error('Announcements load error:', e);
       }
     };
+
     loadAnnouncements();
+
+    const channel = supabase
+      .channel('announcements-realtime')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'announcements' 
+      }, () => {
+        loadAnnouncements();
+      })
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'user_read_announcements' 
+      }, () => {
+        loadAnnouncements();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleMarkAsRead = async (id: string) => {
     try {
+      setAnnouncements(prev => prev.map(a => a.id === id ? { ...a, is_read: true } : a));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) return;
 
       await fetch(`/api/announcements/${id}/mark-read`, {
-        method: 'PATCH',
+        method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });
-
-      setAnnouncements(prev => prev.map(a => a.id === id ? { ...a, is_read: true } : a));
-      setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
       console.error('Error marking announcement as read:', error);
     }
@@ -156,20 +179,22 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
 
   const handleMarkAllAsRead = async () => {
     try {
+      const unreadIds = announcements.filter(a => !a.is_read).map(a => a.id);
+      if (unreadIds.length === 0) return;
+
+      setAnnouncements(prev => prev.map(a => ({ ...a, is_read: true })));
+      setUnreadCount(0);
+
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) return;
 
-      const unreadIds = announcements.filter(a => !a.is_read).map(a => a.id);
       await Promise.all(unreadIds.map(id => 
         fetch(`/api/announcements/${id}/mark-read`, {
-          method: 'PATCH',
+          method: 'POST',
           headers: { Authorization: `Bearer ${token}` }
         })
       ));
-
-      setAnnouncements(prev => prev.map(a => ({ ...a, is_read: true })));
-      setUnreadCount(0);
     } catch (error) {
       console.error('Error marking all as read:', error);
     }
@@ -289,7 +314,7 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
         </div>
 
         <div className="flex-1 flex flex-col">
-          <div className="bg-[#0f1012] border-b border-gray-700 relative z-[60] lg:h-[61px]">
+          <div className="bg-[#0f1012] border-b border-gray-700 relative z-[10] lg:h-[61px]">
             <div className="max-w-7xl mx-auto px-4 lg:py-2">
               <div className="flex items-center justify-between gap-4">
                 <div className="lg:hidden flex-shrink-0">
@@ -299,7 +324,7 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
                     aria-label="Open navigation"
                   >
                     <Menu className="w-5 h-5" />
-            </button>
+                  </button>
                 </div>
                 
                 <div className="flex-1 max-w-2xl mx-auto">
@@ -308,14 +333,10 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
                 
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <div className="lg:hidden">
-            <Link 
-              href="/" 
-                      className="p-2 text-gray-400 hover:text-red-400 hover:bg-gray-800 rounded-lg transition-colors" 
-              title="Home"
-            >
+                    <Link href="/" className="p-2 text-gray-400 hover:text-red-400 hover:bg-gray-800 rounded-lg transition-colors" title="Home">
                       <Home className="w-5 h-5" />
-            </Link>
-          </div>
+                    </Link>
+                  </div>
 
                   <AnnouncementsButton
                     unreadCount={unreadCount}

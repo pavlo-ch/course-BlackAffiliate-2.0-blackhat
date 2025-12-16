@@ -22,22 +22,19 @@ export default function AnnouncementsList({
     return new Intl.DateTimeFormat('en-US', {
       day: 'numeric',
       month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric'
     }).format(date);
   };
 
-  const [hasMarkedAsRead, setHasMarkedAsRead] = React.useState(false);
-
   React.useEffect(() => {
-    if (!hasMarkedAsRead) {
-      const unreadAnnouncements = announcements.filter(a => !a.is_read);
-      if (unreadAnnouncements.length > 0) {
-        setHasMarkedAsRead(true);
-        onMarkAllAsRead();
-      }
-    }
+    const unreadAnnouncements = announcements.filter(a => !a.is_read);
+    if (unreadAnnouncements.length === 0) return;
+
+    const timer = setTimeout(() => {
+      onMarkAllAsRead();
+    }, 10000);
+
+    return () => clearTimeout(timer);
   }, []);
 
   return (
@@ -76,69 +73,64 @@ export default function AnnouncementsList({
                     : 'from-red-900/20 to-gray-800/50 border-red-600 shadow-lg shadow-red-900/20'
                 }`}
               >
-                <div className="flex items-start gap-4">
-                  <button
-                    onClick={() => !announcement.is_read && onMarkAsRead(announcement.id)}
-                    className={`mt-1 flex-shrink-0 transition-all duration-300 ${
-                      announcement.is_read
-                        ? 'text-gray-600 cursor-default'
-                        : 'text-red-500 hover:text-red-400 cursor-pointer hover:scale-110'
-                    }`}
-                    disabled={announcement.is_read}
-                  >
-                    {announcement.is_read ? (
-                      <CheckCircle className="w-6 h-6" />
-                    ) : (
-                      <Circle className="w-6 h-6" />
-                    )}
-                  </button>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="mb-3">
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
-                        <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
-                          <h3 className={`text-lg font-bold break-words ${
-                            announcement.is_read ? 'text-gray-300' : 'text-white'
-                          }`}>
-                            {announcement.title}
-                          </h3>
-                          {announcement.is_edited && (
-                            <span className="bg-blue-600/20 text-blue-400 text-xs px-2 py-1 rounded-full border border-blue-500/30 flex-shrink-0">
-                              Edited
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-col gap-1 text-xs text-gray-400 flex-shrink-0 sm:text-right">
-                          <div className="flex items-center gap-1 whitespace-nowrap">
-                            <Calendar className="w-3 h-3 flex-shrink-0" />
-                            <span className="whitespace-nowrap">{formatDate(announcement.created_at)}</span>
-                          </div>
-                          {announcement.is_edited && announcement.updated_at && (
-                            <div className="flex items-center gap-1 text-blue-400 whitespace-nowrap">
-                              <Clock className="w-3 h-3 flex-shrink-0" />
-                              <span className="whitespace-nowrap">Updated: {formatDate(announcement.updated_at)}</span>
-                            </div>
-                          )}
+                <div className="flex-1 min-w-0">
+                  <div className="mb-3">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <button
+                        onClick={() => !announcement.is_read && onMarkAsRead(announcement.id)}
+                        className={`flex-shrink-0 transition-all duration-300 ${
+                          announcement.is_read
+                            ? 'text-gray-600 cursor-default'
+                            : 'text-red-500 hover:text-red-400 cursor-pointer hover:scale-110'
+                        }`}
+                        disabled={announcement.is_read}
+                      >
+                        {announcement.is_read ? (
+                          <CheckCircle className="w-4 h-4" />
+                        ) : (
+                          <Circle className="w-4 h-4" />
+                        )}
+                      </button>
+                      <div className="flex items-center gap-2">
+                        {announcement.is_edited && (
+                          <span className="bg-blue-600/20 text-blue-400 text-xs px-2 py-1 rounded-full border border-blue-500/30 flex-shrink-0">
+                            Edited
+                          </span>
+                        )}
+                        <div className="flex items-center gap-1 text-xs text-gray-400 whitespace-nowrap">
+                          <Calendar className="w-3 h-3 flex-shrink-0" />
+                          <span>{formatDate(announcement.created_at)}</span>
                         </div>
                       </div>
                     </div>
-
-                    <p className={`text-sm whitespace-pre-wrap leading-relaxed ${
-                      announcement.is_read ? 'text-gray-400' : 'text-gray-200'
+                    <h3 className={`text-lg font-bold break-words mb-2 ${
+                      announcement.is_read ? 'text-gray-300' : 'text-white'
                     }`}>
-                      {announcement.content}
-                    </p>
-
-                    {announcement.image_url && (
-                      <div className="mt-4">
-                        <img
-                          src={announcement.image_url}
-                          alt={announcement.title}
-                          className="max-h-72 rounded-xl object-cover border border-red-800/30 shadow-lg w-full"
-                        />
+                      {announcement.title}
+                    </h3>
+                    {announcement.is_edited && announcement.updated_at && (
+                      <div className="flex items-center gap-1 text-xs text-blue-400 whitespace-nowrap mb-2">
+                        <Clock className="w-3 h-3 flex-shrink-0" />
+                        <span>Updated: {formatDate(announcement.updated_at)}</span>
                       </div>
                     )}
                   </div>
+
+                  <p className={`text-sm whitespace-pre-wrap leading-relaxed ${
+                    announcement.is_read ? 'text-gray-400' : 'text-gray-200'
+                  }`}>
+                    {announcement.content.replace(/\*\*/g, '')}
+                  </p>
+
+                  {announcement.image_url && (
+                    <div className="mt-4">
+                      <img
+                        src={announcement.image_url}
+                        alt={announcement.title}
+                        className="max-h-72 rounded-xl object-cover border border-red-800/30 shadow-lg w-full"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             ))

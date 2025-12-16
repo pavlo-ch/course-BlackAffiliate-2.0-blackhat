@@ -108,14 +108,26 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
-        if (!token) return;
+        if (!token) {
+          console.warn('No auth token available for loading announcements');
+          return;
+        }
+        
         const res = await fetch('/api/announcements', {
           headers: { Authorization: `Bearer ${token}` }
         });
+        
+        if (!res.ok) {
+          console.error('Announcements API error:', res.status, res.statusText);
+          return;
+        }
+        
         const data = await res.json();
         if (data?.success) {
-          setAnnouncements(data.announcements);
-          setUnreadCount(data.unread_count);
+          setAnnouncements(data.announcements || []);
+          setUnreadCount(data.unread_count || 0);
+        } else {
+          console.error('Announcements API returned error:', data?.message);
         }
       } catch (e) {
         console.error('Announcements load error:', e);
@@ -287,7 +299,7 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
                     aria-label="Open navigation"
                   >
                     <Menu className="w-5 h-5" />
-                  </button>
+            </button>
                 </div>
                 
                 <div className="flex-1 max-w-2xl mx-auto">
@@ -296,15 +308,15 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
                 
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <div className="lg:hidden">
-                    <Link 
-                      href="/" 
+            <Link 
+              href="/" 
                       className="p-2 text-gray-400 hover:text-red-400 hover:bg-gray-800 rounded-lg transition-colors" 
-                      title="Home"
-                    >
+              title="Home"
+            >
                       <Home className="w-5 h-5" />
-                    </Link>
-                  </div>
-                  
+            </Link>
+          </div>
+
                   <AnnouncementsButton
                     unreadCount={unreadCount}
                     onClick={() => setShowAnnouncementsList(true)}

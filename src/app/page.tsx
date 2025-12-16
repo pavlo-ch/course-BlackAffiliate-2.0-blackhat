@@ -28,16 +28,29 @@ export default function Home() {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       
+      if (!token) {
+        console.warn('No auth token available for loading announcements');
+        return;
+      }
+      
       const response = await fetch('/api/announcements', {
         headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
+          'Authorization': `Bearer ${token}`,
         },
       });
+      
+      if (!response.ok) {
+        console.error('Announcements API error:', response.status, response.statusText);
+        return;
+      }
+      
       const data = await response.json();
       
       if (data.success) {
-        setAnnouncements(data.announcements);
-        setUnreadCount(data.unread_count);
+        setAnnouncements(data.announcements || []);
+        setUnreadCount(data.unread_count || 0);
+      } else {
+        console.error('Announcements API returned error:', data.message);
       }
     } catch (error) {
       console.error('Error loading announcements:', error);
@@ -133,7 +146,7 @@ export default function Home() {
                   </div>
                 )}
 
-                <div className="flex justify-center mb-6">
+                <div className="flex justify-center mb-6 px-4 md:px-0">
                   <CourseSearch />
                 </div>
                 <div className="flex flex-wrap justify-center gap-4 mb-8 md:mb-12">

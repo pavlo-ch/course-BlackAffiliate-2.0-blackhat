@@ -24,6 +24,30 @@ interface CalculatedMetrics {
   cprRatioMin: number;
   cprRatioMid: number;
   cprRatioMax: number;
+  clickToInstallRateMin: number;
+  clickToInstallRateMid: number;
+  clickToInstallRateMax: number;
+  clickToInstallRatioMin: number;
+  clickToInstallRatioMid: number;
+  clickToInstallRatioMax: number;
+  installToRegistrationRateMin: number;
+  installToRegistrationRateMid: number;
+  installToRegistrationRateMax: number;
+  installToRegistrationRatioMin: number;
+  installToRegistrationRatioMid: number;
+  installToRegistrationRatioMax: number;
+  registrationToDepositRateMin: number;
+  registrationToDepositRateMid: number;
+  registrationToDepositRateMax: number;
+  registrationToDepositRatioMin: number;
+  registrationToDepositRatioMid: number;
+  registrationToDepositRatioMax: number;
+  clickToDepositRateMin: number;
+  clickToDepositRateMid: number;
+  clickToDepositRateMax: number;
+  clickToDepositRatioMin: number;
+  clickToDepositRatioMid: number;
+  clickToDepositRatioMax: number;
   roi: number;
 }
 
@@ -55,6 +79,44 @@ export default function FacebookAdsCalculator() {
     const cpaDivisor = 1 + (roi / 100);
     const cpa = payout / cpaDivisor;
 
+    const cpcRatioMin = ratioRanges.cpc.min;
+    const cpcRatioMid = 40;
+    const cpcRatioMax = ratioRanges.cpc.max;
+    const cpiRatioMin = ratioRanges.cpi.min;
+    const cpiRatioMid = 10;
+    const cpiRatioMax = ratioRanges.cpi.max;
+    const cprRatioMin = ratioRanges.cpr.min;
+    const cprRatioMid = 5;
+    const cprRatioMax = ratioRanges.cpr.max;
+
+    const clickToInstallRateMin = (cpiRatioMax / cpcRatioMax) * 100;
+    const clickToInstallRateMid = (cpiRatioMid / cpcRatioMid) * 100;
+    const clickToInstallRateMax = (cpiRatioMin / cpcRatioMin) * 100;
+    const clickToInstallRatioMin = cpcRatioMax / cpiRatioMax;
+    const clickToInstallRatioMid = cpcRatioMid / cpiRatioMid;
+    const clickToInstallRatioMax = cpcRatioMin / cpiRatioMin;
+
+    const installToRegistrationRateMin = (cprRatioMax / cpiRatioMax) * 100;
+    const installToRegistrationRateMid = (cprRatioMid / cpiRatioMid) * 100;
+    const installToRegistrationRateMax = (cprRatioMin / cpiRatioMin) * 100;
+    const installToRegistrationRatioMin = cpiRatioMax / cprRatioMax;
+    const installToRegistrationRatioMid = cpiRatioMid / cprRatioMid;
+    const installToRegistrationRatioMax = cpiRatioMin / cprRatioMin;
+
+    const registrationToDepositRateMin = (1 / cprRatioMax) * 100;
+    const registrationToDepositRateMid = (1 / cprRatioMid) * 100;
+    const registrationToDepositRateMax = (1 / cprRatioMin) * 100;
+    const registrationToDepositRatioMin = cprRatioMax;
+    const registrationToDepositRatioMid = cprRatioMid;
+    const registrationToDepositRatioMax = cprRatioMin;
+
+    const clickToDepositRateMin = (1 / cpcRatioMax) * 100;
+    const clickToDepositRateMid = (1 / cpcRatioMid) * 100;
+    const clickToDepositRateMax = (1 / cpcRatioMin) * 100;
+    const clickToDepositRatioMin = cpcRatioMax;
+    const clickToDepositRatioMid = cpcRatioMid;
+    const clickToDepositRatioMax = cpcRatioMin;
+
     return {
       cpcMin,
       cpcMid,
@@ -67,18 +129,51 @@ export default function FacebookAdsCalculator() {
       cprMax,
       cpaMin: cpa,
       cpaMax: cpa,
-      cpcRatioMin: ratioRanges.cpc.min,
-      cpcRatioMid: 40,
-      cpcRatioMax: ratioRanges.cpc.max,
-      cpiRatioMin: ratioRanges.cpi.min,
-      cpiRatioMid: 10,
-      cpiRatioMax: ratioRanges.cpi.max,
-      cprRatioMin: ratioRanges.cpr.min,
-      cprRatioMid: 5,
-      cprRatioMax: ratioRanges.cpr.max,
+      cpcRatioMin,
+      cpcRatioMid,
+      cpcRatioMax,
+      cpiRatioMin,
+      cpiRatioMid,
+      cpiRatioMax,
+      cprRatioMin,
+      cprRatioMid,
+      cprRatioMax,
+      clickToInstallRateMin,
+      clickToInstallRateMid,
+      clickToInstallRateMax,
+      clickToInstallRatioMin,
+      clickToInstallRatioMid,
+      clickToInstallRatioMax,
+      installToRegistrationRateMin,
+      installToRegistrationRateMid,
+      installToRegistrationRateMax,
+      installToRegistrationRatioMin,
+      installToRegistrationRatioMid,
+      installToRegistrationRatioMax,
+      registrationToDepositRateMin,
+      registrationToDepositRateMid,
+      registrationToDepositRateMax,
+      registrationToDepositRatioMin,
+      registrationToDepositRatioMid,
+      registrationToDepositRatioMax,
+      clickToDepositRateMin,
+      clickToDepositRateMid,
+      clickToDepositRateMax,
+      clickToDepositRatioMin,
+      clickToDepositRatioMid,
+      clickToDepositRatioMax,
       roi,
     };
   }, [payout, roi]);
+
+  const formatPercent = (value: number): string => {
+    const rounded = Number(value.toFixed(2));
+    return `${rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(2)}%`;
+  };
+
+  const formatRatio = (value: number): string => {
+    return `${Math.round(value)}:1`;
+  };
 
   return (
     <div className="space-y-8">
@@ -229,6 +324,102 @@ export default function FacebookAdsCalculator() {
               </tr>
               <tr className="border-b border-gray-800 hover:bg-gray-900/50 transition-colors">
                 <td className="py-4 px-4 text-sm text-gray-300 font-medium">
+                  Click → Install
+                  <div className="text-xs text-gray-500 font-normal mt-1">Conversion rate from clicks to installs</div>
+                </td>
+                <td className="py-4 px-4 text-center">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-white font-medium">{formatPercent(calculateMetrics.clickToInstallRateMin)}</span>
+                    <span className="text-xs text-gray-500">Ratio {formatRatio(calculateMetrics.clickToInstallRatioMin)}</span>
+                  </div>
+                </td>
+                <td className="py-4 px-4 text-center">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-white font-medium">{formatPercent(calculateMetrics.clickToInstallRateMid)}</span>
+                    <span className="text-xs text-gray-500">Ratio {formatRatio(calculateMetrics.clickToInstallRatioMid)}</span>
+                  </div>
+                </td>
+                <td className="py-4 px-4 text-center">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-white font-medium">{formatPercent(calculateMetrics.clickToInstallRateMax)}</span>
+                    <span className="text-xs text-gray-500">Ratio {formatRatio(calculateMetrics.clickToInstallRatioMax)}</span>
+                  </div>
+                </td>
+              </tr>
+              <tr className="border-b border-gray-800 hover:bg-gray-900/50 transition-colors">
+                <td className="py-4 px-4 text-sm text-gray-300 font-medium">
+                  Install → Registration
+                  <div className="text-xs text-gray-500 font-normal mt-1">Conversion rate from installs to registrations</div>
+                </td>
+                <td className="py-4 px-4 text-center">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-white font-medium">{formatPercent(calculateMetrics.installToRegistrationRateMin)}</span>
+                    <span className="text-xs text-gray-500">Ratio {formatRatio(calculateMetrics.installToRegistrationRatioMin)}</span>
+                  </div>
+                </td>
+                <td className="py-4 px-4 text-center">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-white font-medium">{formatPercent(calculateMetrics.installToRegistrationRateMid)}</span>
+                    <span className="text-xs text-gray-500">Ratio {formatRatio(calculateMetrics.installToRegistrationRatioMid)}</span>
+                  </div>
+                </td>
+                <td className="py-4 px-4 text-center">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-white font-medium">{formatPercent(calculateMetrics.installToRegistrationRateMax)}</span>
+                    <span className="text-xs text-gray-500">Ratio {formatRatio(calculateMetrics.installToRegistrationRatioMax)}</span>
+                  </div>
+                </td>
+              </tr>
+              <tr className="border-b border-gray-800 hover:bg-gray-900/50 transition-colors">
+                <td className="py-4 px-4 text-sm text-gray-300 font-medium">
+                  Registration → Deposit
+                  <div className="text-xs text-gray-500 font-normal mt-1">Conversion rate from registrations to deposits</div>
+                </td>
+                <td className="py-4 px-4 text-center">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-white font-medium">{formatPercent(calculateMetrics.registrationToDepositRateMin)}</span>
+                    <span className="text-xs text-gray-500">Ratio {formatRatio(calculateMetrics.registrationToDepositRatioMin)}</span>
+                  </div>
+                </td>
+                <td className="py-4 px-4 text-center">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-white font-medium">{formatPercent(calculateMetrics.registrationToDepositRateMid)}</span>
+                    <span className="text-xs text-gray-500">Ratio {formatRatio(calculateMetrics.registrationToDepositRatioMid)}</span>
+                  </div>
+                </td>
+                <td className="py-4 px-4 text-center">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-white font-medium">{formatPercent(calculateMetrics.registrationToDepositRateMax)}</span>
+                    <span className="text-xs text-gray-500">Ratio {formatRatio(calculateMetrics.registrationToDepositRatioMax)}</span>
+                  </div>
+                </td>
+              </tr>
+              <tr className="border-b border-gray-800 hover:bg-gray-900/50 transition-colors">
+                <td className="py-4 px-4 text-sm text-gray-300 font-medium">
+                  Click → Deposit (Overall CR)
+                  <div className="text-xs text-gray-500 font-normal mt-1">Overall conversion rate from clicks to deposits</div>
+                </td>
+                <td className="py-4 px-4 text-center">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-white font-medium">{formatPercent(calculateMetrics.clickToDepositRateMin)}</span>
+                    <span className="text-xs text-gray-500">Ratio {formatRatio(calculateMetrics.clickToDepositRatioMin)}</span>
+                  </div>
+                </td>
+                <td className="py-4 px-4 text-center">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-white font-medium">{formatPercent(calculateMetrics.clickToDepositRateMid)}</span>
+                    <span className="text-xs text-gray-500">Ratio {formatRatio(calculateMetrics.clickToDepositRatioMid)}</span>
+                  </div>
+                </td>
+                <td className="py-4 px-4 text-center">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-white font-medium">{formatPercent(calculateMetrics.clickToDepositRateMax)}</span>
+                    <span className="text-xs text-gray-500">Ratio {formatRatio(calculateMetrics.clickToDepositRatioMax)}</span>
+                  </div>
+                </td>
+              </tr>
+              <tr className="border-b border-gray-800 hover:bg-gray-900/50 transition-colors">
+                <td className="py-4 px-4 text-sm text-gray-300 font-medium">
                   CPA (Cost per Acquisition)
                   <div className="text-xs text-gray-500 font-normal mt-1">Final cost per deposit</div>
                 </td>
@@ -257,6 +448,7 @@ export default function FacebookAdsCalculator() {
           </table>
         </div>
       </div>
+
     </div>
   );
 }

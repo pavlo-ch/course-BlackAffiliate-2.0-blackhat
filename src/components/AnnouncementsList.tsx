@@ -94,30 +94,32 @@ export default function AnnouncementsList({
                   </button>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
-                        <h3 className={`text-lg font-bold ${
-                        announcement.is_read ? 'text-gray-300' : 'text-white'
-                      }`}>
-                        {announcement.title}
-                      </h3>
-                        {announcement.is_edited && (
-                          <span className="bg-blue-600/20 text-blue-400 text-xs px-2 py-1 rounded-full border border-blue-500/30 flex-shrink-0">
-                            Edited
-                      </span>
-                        )}
-                      </div>
-                      <div className="flex flex-col gap-1 text-xs text-gray-400 flex-shrink-0 text-right">
-                        <div className="flex items-center gap-1 whitespace-nowrap">
-                          <Calendar className="w-3 h-3 flex-shrink-0" />
-                          <span className="whitespace-nowrap">{formatDate(announcement.created_at)}</span>
+                    <div className="mb-3">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
+                        <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
+                          <h3 className={`text-lg font-bold break-words ${
+                            announcement.is_read ? 'text-gray-300' : 'text-white'
+                          }`}>
+                            {announcement.title}
+                          </h3>
+                          {announcement.is_edited && (
+                            <span className="bg-blue-600/20 text-blue-400 text-xs px-2 py-1 rounded-full border border-blue-500/30 flex-shrink-0">
+                              Edited
+                            </span>
+                          )}
                         </div>
-                        {announcement.is_edited && announcement.updated_at && (
-                          <div className="flex items-center gap-1 text-blue-400 whitespace-nowrap">
-                            <Clock className="w-3 h-3 flex-shrink-0" />
-                            <span className="whitespace-nowrap">Updated: {formatDate(announcement.updated_at)}</span>
+                        <div className="flex flex-col gap-1 text-xs text-gray-400 flex-shrink-0 sm:text-right">
+                          <div className="flex items-center gap-1 whitespace-nowrap">
+                            <Calendar className="w-3 h-3 flex-shrink-0" />
+                            <span className="whitespace-nowrap">{formatDate(announcement.created_at)}</span>
                           </div>
-                        )}
+                          {announcement.is_edited && announcement.updated_at && (
+                            <div className="flex items-center gap-1 text-blue-400 whitespace-nowrap">
+                              <Clock className="w-3 h-3 flex-shrink-0" />
+                              <span className="whitespace-nowrap">Updated: {formatDate(announcement.updated_at)}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
 

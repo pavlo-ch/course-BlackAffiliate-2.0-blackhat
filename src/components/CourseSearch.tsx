@@ -200,12 +200,8 @@ export default function CourseSearch() {
       </div>
 
       {isOpen && query.trim().length >= 1 && (
-        <div className="absolute top-full left-0 mt-2 w-full min-w-[300px] max-w-[calc(100vw-2rem)] bg-[#0f1012] border border-gray-700 rounded-lg shadow-2xl z-[9999]">
-          <div className="p-2 border-b border-gray-700 flex items-center gap-2 text-xs text-gray-400">
-            <Search className="w-3 h-3" />
-            <span>Search results</span>
-          </div>
-
+        <div className="absolute top-full left-0 mt-1 w-full min-w-[300px] max-w-[calc(100vw-2rem)] bg-[#0f1012] border border-gray-700 rounded-lg shadow-2xl z-[9999]">
+          
           <div className="max-h-96 overflow-y-auto">
             {query.trim().length < 2 && (
               <div className="p-4 text-center text-gray-400 text-sm">

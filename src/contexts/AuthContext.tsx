@@ -35,26 +35,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      const LEADER_KEY = 'auth-leader-tab';
+      const LEADER_TIMEOUT = 5000;
+      
       broadcastChannel.current = new BroadcastChannel(AUTH_CHANNEL_NAME);
       
-      // Слухаємо повідомлення від інших вкладок
+      const tryBecomeLeader = () => {
+        const now = Date.now();
+        const stored = localStorage.getItem(LEADER_KEY);
+        
+        if (!stored) {
+          localStorage.setItem(LEADER_KEY, JSON.stringify({ tabId: tabId.current, timestamp: now }));
+          isLeaderTab.current = true;
+          console.log(`👑 [Tab ${tabId.current}] Became leader (no existing leader)`);
+          broadcastChannel.current?.postMessage({
+            type: 'LEADER_ANNOUNCE',
+            senderId: tabId.current
+          });
+          return true;
+        }
+        
+        try {
+          const leader = JSON.parse(stored);
+          if (now - leader.timestamp > LEADER_TIMEOUT) {
+            localStorage.setItem(LEADER_KEY, JSON.stringify({ tabId: tabId.current, timestamp: now }));
+            isLeaderTab.current = true;
+            console.log(`👑 [Tab ${tabId.current}] Became leader (previous leader expired)`);
+            broadcastChannel.current?.postMessage({
+              type: 'LEADER_ANNOUNCE',
+              senderId: tabId.current
+            });
+            return true;
+          }
+          
+          if (leader.tabId === tabId.current) {
+            isLeaderTab.current = true;
+            return true;
+          }
+        } catch (e) {
+          console.error('Error parsing leader data:', e);
+        }
+        
+        return false;
+      };
+      
+      const updateLeaderHeartbeat = () => {
+        if (isLeaderTab.current) {
+          const now = Date.now();
+          localStorage.setItem(LEADER_KEY, JSON.stringify({ tabId: tabId.current, timestamp: now }));
+        }
+      };
+      
       broadcastChannel.current.onmessage = (event) => {
         const { type, data, senderId } = event.data;
         
-        // Ігноруємо власні повідомлення
         if (senderId === tabId.current) return;
         
         console.log(`📨 [Tab ${tabId.current}] Received message:`, type);
         
         switch (type) {
           case 'LEADER_ANNOUNCE':
-            // Інша вкладка стала лідером
-            isLeaderTab.current = false;
-            console.log(`👑 [Tab ${tabId.current}] Leader is now: ${senderId}`);
+            if (senderId !== tabId.current) {
+              isLeaderTab.current = false;
+              console.log(`👑 [Tab ${tabId.current}] Leader is now: ${senderId}`);
+            }
             break;
             
           case 'AUTH_STATE_UPDATE':
-            // Оновлення стану користувача від лідера
             console.log(`🔄 [Tab ${tabId.current}] Syncing auth state from leader`);
             if (data.user) {
               setUser(data.user);
@@ -65,14 +112,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             break;
             
           case 'LOGOUT':
-            // Вилогінення з іншої вкладки
             console.log(`🚪 [Tab ${tabId.current}] Logout from another tab`);
             setUser(null);
             break;
             
           case 'LEADER_CHECK':
-            // Перевірка чи є лідер
             if (isLeaderTab.current) {
+              updateLeaderHeartbeat();
               broadcastChannel.current?.postMessage({
                 type: 'LEADER_ANNOUNCE',
                 senderId: tabId.current
@@ -82,28 +128,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       };
       
-      // Швидке визначення лідера (скорочені таймаути)
       broadcastChannel.current?.postMessage({
         type: 'LEADER_CHECK',
         senderId: tabId.current
       });
       
-      // Якщо за 100ms немає відповіді - стаємо лідером
       setTimeout(() => {
-        if (!isLeaderTab.current) {
-          isLeaderTab.current = true;
-          console.log(`👑 [Tab ${tabId.current}] Became leader (no response)`);
-          broadcastChannel.current?.postMessage({
-            type: 'LEADER_ANNOUNCE',
-            senderId: tabId.current
-          });
+        tryBecomeLeader();
+      }, 150);
+      
+      setInterval(updateLeaderHeartbeat, 2000);
+      
+      window.addEventListener('beforeunload', () => {
+        if (isLeaderTab.current) {
+          localStorage.removeItem(LEADER_KEY);
         }
-      }, 100);
+      });
       
       console.log(`🌐 [Tab ${tabId.current}] BroadcastChannel initialized`);
     } catch (error) {
       console.error('Failed to initialize BroadcastChannel:', error);
-      isLeaderTab.current = true; // Fallback до single-tab режиму
+      isLeaderTab.current = true;
     }
   }, []);
 
@@ -161,34 +206,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      const { error } = await Promise.race([
-        supabase.auth.getSession(),
-        new Promise<{ error: any }>((_, reject) => 
-          setTimeout(() => reject(new Error('Health check timeout')), 5000)
+      const response = await Promise.race([
+        fetch(`${supabaseUrl}/rest/v1/`, {
+          method: 'GET',
+          headers: {
+            'apikey': supabaseAnonKey,
+            'Authorization': `Bearer ${supabaseAnonKey}`
+          }
+        }),
+        new Promise<Response>((_, reject) => 
+          setTimeout(() => reject(new Error('Health check timeout')), 3000)
         )
-      ]) as { error: any };
+      ]);
       
-      // Обробка помилки Invalid Refresh Token
-      if (error && (
-        error.message?.includes('Invalid Refresh Token') ||
-        error.message?.includes('Refresh Token Not Found') ||
-        error.code === 'refresh_token_not_found'
-      )) {
-        console.warn('🔑 Invalid refresh token detected, clearing session');
-        await clearInvalidSession();
-        return true; // Повертаємо true, щоб продовжити ініціалізацію (без сесії)
-      }
-      
-      const isHealthy = !error;
-      if (error && error.message !== 'Health check timeout') {
-        console.log('Health check error details:', error);
-      }
-      return isHealthy;
+      return response.ok || response.status === 401;
     } catch (error: any) {
       if (error?.message === 'Health check timeout') {
         console.warn('AuthContext: Health check timeout');
       } else {
-      console.error('💥 AuthContext: Health check failed:', error);
+        console.error('💥 AuthContext: Health check failed:', error);
       }
       return false;
     }
@@ -205,12 +241,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!isLeaderTab.current) {
         console.log(`⏳ [Tab ${tabId.current}] Waiting for leader to initialize auth...`);
         setLoadingStage('Syncing with other tabs...');
-        // Інші вкладки чекають на повідомлення від leader
+        
         setTimeout(() => {
-          if (isInitializing) {
-            setLoadingStage('Waiting for sync... (this may take a moment)');
+          if (isInitializing && !user) {
+            console.log(`⚠️ [Tab ${tabId.current}] No sync after 10s, becoming leader`);
+            isLeaderTab.current = true;
+            initializeAuthWithRetry(1);
           }
-        }, 3000);
+        }, 10000);
+        
         return;
       }
 

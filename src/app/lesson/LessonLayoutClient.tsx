@@ -7,7 +7,7 @@ import AnnouncementsButton from '@/components/AnnouncementsButton';
 import AnnouncementsList from '@/components/AnnouncementsList';
 import { useAuth } from '@/contexts/AuthContext';
 import AccessControl from '@/components/AccessControl';
-import { Menu, X, Settings, LogOut, Home, Map, Tag, Wrench } from 'lucide-react';
+import { Menu, X, Settings, LogOut, Home, Map, Tag, Wrench, Calculator } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -239,6 +239,12 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
                   <Link href="/tools" className="flex flex-col items-center gap-1 text-xs bg-green-600 hover:bg-green-700 px-2 py-2 rounded-lg transition-colors text-white font-medium">
                     <Wrench className="w-4 h-4" />
                     <span className="text-center">Tools</span>
+                  </Link>
+                </AccessControl>
+                <AccessControl requiredLevel={1}>
+                  <Link href="/calculator" className="flex flex-col items-center gap-1 text-xs bg-blue-600 hover:bg-blue-700 px-2 py-2 rounded-lg transition-colors text-white font-medium">
+                    <Calculator className="w-4 h-4" />
+                    <span className="text-center">Calculator</span>
                   </Link>
                 </AccessControl>
               </div>

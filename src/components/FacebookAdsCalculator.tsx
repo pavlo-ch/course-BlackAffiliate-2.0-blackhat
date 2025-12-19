@@ -60,6 +60,8 @@ const ratioRanges = {
 export default function FacebookAdsCalculator() {
   const [payout, setPayout] = useState<number>(187.0);
   const [roi, setRoi] = useState<number>(10);
+  const [payoutInput, setPayoutInput] = useState<string>('187.0');
+  const [roiInput, setRoiInput] = useState<string>('10');
 
   const formatCurrency = (value: number): string => {
     return `$${value.toFixed(2)}`;
@@ -191,11 +193,23 @@ export default function FacebookAdsCalculator() {
               <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">$</span>
               <input
                 id="payout"
-                type="number"
-                step="0.01"
-                min="0"
-                value={payout}
-                onChange={(e) => setPayout(parseFloat(e.target.value) || 0)}
+                type="text"
+                inputMode="decimal"
+                value={payoutInput}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setPayoutInput(value);
+                  const numValue = parseFloat(value);
+                  if (!isNaN(numValue) && numValue >= 0) {
+                    setPayout(numValue);
+                  }
+                }}
+                onBlur={(e) => {
+                  const numValue = parseFloat(e.target.value);
+                  if (isNaN(numValue) || numValue < 0) {
+                    setPayoutInput(payout.toString());
+                  }
+                }}
                 className="w-full pl-8 pr-4 py-2 bg-black border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="0.00"
               />
@@ -208,12 +222,23 @@ export default function FacebookAdsCalculator() {
             <div className="relative">
               <input
                 id="roi"
-                type="number"
-                step="0.1"
-                min="0"
-                max="100"
-                value={roi}
-                onChange={(e) => setRoi(parseFloat(e.target.value) || 0)}
+                type="text"
+                inputMode="decimal"
+                value={roiInput}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setRoiInput(value);
+                  const numValue = parseFloat(value);
+                  if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
+                    setRoi(numValue);
+                  }
+                }}
+                onBlur={(e) => {
+                  const numValue = parseFloat(e.target.value);
+                  if (isNaN(numValue) || numValue < 0 || numValue > 100) {
+                    setRoiInput(roi.toString());
+                  }
+                }}
                 className="w-full pl-4 pr-8 py-2 bg-black border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="10"
               />

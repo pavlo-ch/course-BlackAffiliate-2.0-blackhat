@@ -278,12 +278,27 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
                     <span className="text-center">Tools</span>
                   </Link>
                 </AccessControl>
-                <AccessControl requiredLevel={1}>
+                {user?.access_level === 6 ? (
                   <Link href="/calculator" className="flex flex-col items-center gap-1 text-xs bg-blue-600 hover:bg-blue-700 px-2 py-2 rounded-lg transition-colors text-white font-medium">
                     <Calculator className="w-4 h-4" />
                     <span className="text-center">Calculator</span>
                   </Link>
-                </AccessControl>
+                ) : (
+                  <AccessControl requiredLevel={1} fallback={
+                    <div 
+                      className="flex flex-col items-center gap-1 text-xs bg-gray-600 px-2 py-2 rounded-lg text-white font-medium cursor-not-allowed opacity-50"
+                      title="Basic+ Only"
+                    >
+                      <Calculator className="w-4 h-4" />
+                      <span className="text-center">Calculator</span>
+                    </div>
+                  }>
+                    <Link href="/calculator" className="flex flex-col items-center gap-1 text-xs bg-blue-600 hover:bg-blue-700 px-2 py-2 rounded-lg transition-colors text-white font-medium">
+                      <Calculator className="w-4 h-4" />
+                      <span className="text-center">Calculator</span>
+                    </Link>
+                  </AccessControl>
+                )}
               </div>
             </div>
             <div className="p-4 mt-auto">

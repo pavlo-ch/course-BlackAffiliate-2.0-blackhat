@@ -10,7 +10,7 @@ import { ArrowLeft } from 'lucide-react';
 import FacebookAdsCalculator from '@/components/FacebookAdsCalculator';
 
 export default function CalculatorPage() {
-  const { isAuthenticated, isInitializing } = useAuth();
+  const { isAuthenticated, isInitializing, user } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -34,29 +34,37 @@ export default function CalculatorPage() {
     return null;
   }
 
+  const calculatorContent = (
+    <div className="min-h-screen bg-black flex flex-col">
+      <div className="flex-grow">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <Link 
+            href="/"
+            className="inline-flex items-center gap-2 text-gray-400 hover:text-green-500 transition-colors mb-6"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Home</span>
+          </Link>
+
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-white mb-2">iGaming Facebook Ads Calculator</h1>
+            <p className="text-gray-400">Calculate key metrics for your Facebook advertising campaigns</p>
+          </div>
+
+          <FacebookAdsCalculator />
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
+
+  if (user?.access_level === 6) {
+    return calculatorContent;
+  }
+
   return (
     <AccessControl requiredLevel={1}>
-      <div className="min-h-screen bg-black flex flex-col">
-        <div className="flex-grow">
-          <div className="max-w-7xl mx-auto px-4 py-8">
-            <Link 
-              href="/"
-              className="inline-flex items-center gap-2 text-gray-400 hover:text-green-500 transition-colors mb-6"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to Home</span>
-            </Link>
-
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-white mb-2">iGaming Facebook Ads Calculator</h1>
-              <p className="text-gray-400">Calculate key metrics for your Facebook advertising campaigns</p>
-            </div>
-
-            <FacebookAdsCalculator />
-          </div>
-        </div>
-        <Footer />
-      </div>
+      {calculatorContent}
     </AccessControl>
   );
 }

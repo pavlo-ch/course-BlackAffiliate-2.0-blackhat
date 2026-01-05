@@ -777,6 +777,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return false;
     if (user.access_level === 5) return false;
     if (user.access_level === 6) {
+      if (lessonId === undefined) {
+        return false;
+      }
       return lessonId === 'lesson-4-9';
     }
     return user.access_level >= requiredLevel;

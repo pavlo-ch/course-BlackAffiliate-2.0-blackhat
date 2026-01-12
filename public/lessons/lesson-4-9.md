@@ -2,7 +2,7 @@
 
 We'll tell you about a method for passing ad moderation on Facebook that allows you to push through unwanted creatives. The method leverages the nuances of multilingual creative processing, reducing the chance of ad rejection.
 
-Disclaimer: Everything we show is for educational purposes only. This method does not guarantee 100% approval of "black creatives," but it significantly increases your chances. The current market and auction situation play a huge role in this process—sometimes you can promote prohibited creatives without issues, and sometimes everything gets blocked in a row; this is called a FB storm.
+> **⚠️ Disclaimer:** Everything we show is for educational purposes only. This method does not guarantee 100% approval of "black creatives," but it significantly increases your chances. The current market and auction situation play a huge role in this process—sometimes you can promote prohibited creatives without issues, and sometimes everything gets blocked in a row; this is called a FB storm.
 
 In addition to this method, we also recommend:
 - Using agency accounts.

@@ -191,7 +191,7 @@ export default function LessonPageClient({ initialLesson: lesson }: LessonPageCl
             </div>
         )}
         <div className="prose prose-lg max-w-none dark:prose-invert">
-          <div className="bg-[#0f1012] border border-gray-800 rounded-lg p-6">
+          <div className="bg-[#0f1012]/80 backdrop-blur-md border border-gray-800 rounded-lg p-6">
             <h3 className="text-base font-semibold text-primary mt-0">Lesson Overview</h3>
             
             <div className="text-gray-300 leading-relaxed prose prose-invert max-w-none">

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Tool, ToolType } from '../types/tools';
-import { ChevronDown, ChevronUp, ExternalLink, Lightbulb, Users, Building2, Wifi, CreditCard, Eye, BarChart3, Server, Search, Phone, Smartphone, Send } from 'lucide-react';
+import { ChevronDown, ChevronUp, ExternalLink, Lightbulb, Users, Building2, Wifi, CreditCard, Eye, BarChart3, Server, Search, Phone, Smartphone, Send, Palette } from 'lucide-react';
 
 interface ToolsSectionsProps {
   tools: Tool[];
@@ -31,7 +31,8 @@ export default function ToolsSections({ tools }: ToolsSectionsProps) {
       'spy_tools': 'bg-pink-500/20 text-pink-400 border-pink-500/30',
       'virtual_numbers': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
       'pwa_services': 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
-      'hosting': 'bg-teal-500/20 text-teal-400 border-teal-500/30'
+      'hosting': 'bg-teal-500/20 text-teal-400 border-teal-500/30',
+      'creative_agencies': 'bg-violet-500/20 text-violet-400 border-violet-500/30'
     };
     return colors[type] || 'bg-gray-500/20 text-gray-400 border-gray-500/30';
   };
@@ -47,7 +48,8 @@ export default function ToolsSections({ tools }: ToolsSectionsProps) {
       'spy_tools': <Search className="w-6 h-6" />,
       'virtual_numbers': <Phone className="w-6 h-6" />,
       'pwa_services': <Smartphone className="w-6 h-6" />,
-      'hosting': <Server className="w-6 h-6" />
+      'hosting': <Server className="w-6 h-6" />,
+      'creative_agencies': <Palette className="w-6 h-6" />
     };
     return icons[type] || <Users className="w-6 h-6" />;
   };
@@ -172,6 +174,14 @@ export default function ToolsSections({ tools }: ToolsSectionsProps) {
       proTip: 'PWAs provide advanced customization options and built-in cloaking features. They pass moderation more easily than standard apps.',
       type: 'pwa_services',
       tools: tools.filter(s => s.type === 'pwa_services' as ToolType)
+    },
+    {
+      id: 'creative_agencies',
+      title: 'Creative Services',
+      description: 'Don\'t want to do it solo? Hit up agencies for creative production.',
+      proTip: 'Sources: https://t.me/creotivs — grab ready-to-go creative assets',
+      type: 'creative_agencies',
+      tools: tools.filter(s => s.type === 'creative_agencies' as ToolType)
     }
   ];
 

@@ -113,7 +113,16 @@ export default function Home() {
   
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-black">
+      <div className="min-h-screen bg-black relative">
+        <div 
+          className="fixed inset-0 bg-repeat bg-fixed bg-center pointer-events-none z-0"
+          style={{ 
+            backgroundImage: 'linear-gradient(rgba(0,0,0,0.15), rgba(0,0,0,0.15)), url(/img/lesson-bg.svg)',
+            backgroundSize: '250% auto',
+            filter: 'brightness(1.4) contrast(1.1)',
+            opacity: 0.5
+          }}
+        />
         <div className="relative">
           <div className="absolute top-0 left-0 right-0 h-64 md:h-[443px] bg-[url('/img/hero.webp')] bg-cover bg-center opacity-80 border-b-4 border-black"></div>
           <div className="absolute top-64 md:top-[443px] left-0 right-0 h-8 md:h-20 lg:h-32 bg-gradient-to-b from-red-500/15 via-red-400/5 to-transparent"></div>

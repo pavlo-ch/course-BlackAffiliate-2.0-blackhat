@@ -37,8 +37,17 @@ export default function ToolsPage() {
 
   return (
     <AccessControl requiredLevel={2}>
-      <div className="min-h-screen bg-black flex flex-col">
-        <div className="flex-grow">
+      <div className="min-h-screen bg-black flex flex-col relative">
+        <div 
+          className="fixed inset-0 bg-repeat bg-fixed bg-center pointer-events-none z-0"
+          style={{ 
+            backgroundImage: 'linear-gradient(rgba(0,0,0,0.15), rgba(0,0,0,0.15)), url(/img/lesson-bg.svg)',
+            backgroundSize: '250% auto',
+            filter: 'brightness(1.4) contrast(1.1)',
+            opacity: 0.5
+          }}
+        />
+        <div className="flex-grow relative z-10">
           <div className="max-w-5xl mx-auto px-4 py-8">
             <Link 
               href="/"

@@ -203,11 +203,20 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
   return (
     <LessonContext.Provider value={{ courseData, currentLessonId, handlePreviousLesson, handleNextLesson, hasPrevious, hasNext }}>
       <div className="min-h-[100svh] bg-background flex relative">
+        <div 
+          className="fixed inset-0 bg-repeat bg-fixed bg-center pointer-events-none"
+          style={{ 
+            backgroundImage: 'linear-gradient(rgba(0,0,0,0.15), rgba(0,0,0,0.15)), url(/img/lesson-bg.svg)',
+            backgroundSize: '250% auto',
+            filter: 'brightness(1.4) contrast(1.1)',
+            opacity: 0.5
+          }}
+        />
         {isMobileNavOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" onClick={() => setIsMobileNavOpen(false)} />
         )}
         
-        <div className={`fixed lg:static inset-y-0 left-0 z-50 w-80 bg-[#0f1012] transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${isMobileNavOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className={`fixed lg:static inset-y-0 left-0 z-50 w-80 bg-[#0f1012]/90 backdrop-blur-md transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${isMobileNavOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="flex h-full lg:h-auto flex-col">
             <div className="flex items-center justify-between p-4 border-b border-gray-700">
               <h2 className="text-lg font-semibold text-white">Navigation</h2>

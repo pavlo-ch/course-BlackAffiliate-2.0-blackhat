@@ -227,5 +227,55 @@ export const toolsData: Tool[] = [
     category: 'PWA Services',
     website: 'https://t.me/zmapp',
     languages: ['English']
+  },
+
+  // Creative Services
+  {
+    id: '27',
+    name: 'Creo Queen',
+    type: 'creative_agencies',
+    category: 'Creative Services',
+    website: 'https://t.me/creo_queen',
+    languages: ['English']
+  },
+  {
+    id: '28',
+    name: 'KreotiwniyTV',
+    type: 'creative_agencies',
+    category: 'Creative Agencies',
+    website: 'https://t.me/KreotiwniyTV',
+    languages: ['English']
+  },
+  {
+    id: '29',
+    name: 'Kreo Studio',
+    type: 'creative_agencies',
+    category: 'Creative Agencies',
+    website: 'https://t.me/kreo_studio',
+    languages: ['English']
+  },
+  {
+    id: '30',
+    name: 'CreoClick Bot',
+    type: 'creative_agencies',
+    category: 'Creative Agencies',
+    website: 'https://t.me/creoclick_bot',
+    languages: ['English']
+  },
+  {
+    id: '31',
+    name: 'TNT Creo',
+    type: 'creative_agencies',
+    category: 'Creative Agencies',
+    website: 'https://t.me/tnt_creo',
+    languages: ['English']
+  },
+  {
+    id: '32',
+    name: 'Creotivs (Sources)',
+    type: 'creative_agencies',
+    category: 'Creative Agencies',
+    website: 'https://t.me/creotivs',
+    languages: ['English']
   }
 ];

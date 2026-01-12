@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { ClientAuthProvider } from '@/components/ClientAuthProvider'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import AdminButton from '@/components/AdminButton'
 
 const geologica = {
   className: 'font-geologica'
@@ -29,6 +30,7 @@ export default function RootLayout({
         <ErrorBoundary>
           <ClientAuthProvider>
             {children}
+            <AdminButton />
           </ClientAuthProvider>
         </ErrorBoundary>
       </body>

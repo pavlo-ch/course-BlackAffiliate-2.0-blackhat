@@ -36,6 +36,13 @@ Scroll to the **"Languages"** section and enable it.
 
 If your task is to promote a video creative, then for non-target languages we add a video; if you are working with static creatives, for target languages we also choose static images.
 
+**Video Creative Settings:**
+
+1. It is mandatory that the length of the main video (your "black" creative) does not exceed 30 seconds.
+2. Additionally, append 14-15 minutes of a "white" video or a static white image to the end of the main video.
+3. Apply 5-7% noise.
+4. Add a slight blur of 7-8%.
+
 **Primary Language:**  
 Choose a non-target language (e.g., African, Arabic, etc.)
 
@@ -46,6 +53,8 @@ Add German (or your target language) where you place your **"black creative".** 
 Upload your "white creative" (safe, non-triggering content).
 
 ![Language Selection Example](/img/4.9/image5.webp)
+
+If your creative still gets rejected during moderation, try generating the main ad text (for the offer) using GPT. Make it 4000-5000 characters long; it can be a first-person story describing a casino experience. The text must be relevant to the offer topic.
 
 ## How It Works
 

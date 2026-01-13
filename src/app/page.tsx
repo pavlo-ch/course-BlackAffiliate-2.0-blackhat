@@ -256,36 +256,41 @@ export default function Home() {
                   const targetLessonId = isLevel6 && isModule4 ? 'lesson-4-9' : section.lessons[0]?.id;
                   
                   const moduleContent = (
-                    <div className={`bg-[#0f1012] rounded-lg overflow-hidden ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gradient-to-r hover:from-gray-800/90 hover:to-red-900/20 hover:shadow-lg hover:shadow-red-500/10 hover:scale-[1.02] cursor-pointer'} transition-all duration-300 group`}>
-                          <div className="flex flex-col sm:flex-row items-center">
-                            <div className="w-full sm:w-32 md:w-40 h-24 sm:h-24 md:h-32 p-2 md:p-4 flex items-center justify-center flex-shrink-0">
-                              <img 
-                                src={moduleImage} 
-                                alt={`Module ${moduleNumber}`}
-                                className="w-full h-full object-cover rounded-lg"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.style.display = 'none';
-                                  const parent = target.parentElement;
-                                  if (parent) {
-                                    parent.innerHTML = `<span class="text-xl md:text-3xl font-bold text-white">${moduleNumber}</span>`;
-                                  }
-                                }}
-                              />
-                            </div>
-                            <div className="flex-1 px-4 md:px-6 py-3 md:py-4 text-center sm:text-left">
-                              <h3 className="text-lg md:text-xl font-semibold text-white mb-1">
-                                Module {moduleNumber} - {section.title.replace(/^\d+\.\s*/, '')}
-                              </h3>
-                              <p className="text-gray-400 text-sm">
-                                {section.lessons.length} lessons
-                              </p>
-                            </div>
-                            <div className="px-4 md:px-6 pb-3 sm:pb-0">
+                    <div className={`sm:bg-[#0f1012] bg-gradient-to-br from-[#1a1d22] to-[#0f1012] sm:border-0 border border-gray-800/50 rounded-xl sm:rounded-lg overflow-hidden ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gradient-to-r hover:from-gray-800/90 hover:to-red-900/20 hover:shadow-lg hover:shadow-red-500/10 hover:scale-[1.02] sm:hover:scale-[1.02] hover:scale-[1.01] cursor-pointer'} transition-all duration-300 group`}>
+                      <div className="flex flex-col sm:flex-row items-center">
+                        <div className="w-full sm:w-32 md:w-40 h-40 sm:h-24 md:h-32 p-3 sm:p-2 md:p-4 flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-gray-900/50 to-transparent sm:bg-transparent rounded-t-xl sm:rounded-lg">
+                          <img 
+                            src={moduleImage} 
+                            alt={`Module ${moduleNumber}`}
+                            className="w-full h-full object-cover rounded-lg"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const parent = target.parentElement;
+                              if (parent) {
+                                parent.innerHTML = `<span class="text-xl md:text-3xl font-bold text-white">${moduleNumber}</span>`;
+                              }
+                            }}
+                          />
+                        </div>
+                        <div className="flex-1 w-full px-4 md:px-6 py-4 sm:py-3 md:py-4 text-left sm:text-left flex items-center justify-between sm:block">
+                          <div className="flex-1">
+                            <h3 className="text-base sm:text-lg md:text-xl font-semibold text-white mb-1.5 sm:mb-1">
+                              Module {moduleNumber} - {section.title.replace(/^\d+\.\s*/, '')}
+                            </h3>
+                            <p className="text-gray-400 text-sm">
+                              {section.lessons.length} lessons
+                            </p>
+                          </div>
+                          <div className="sm:hidden ml-3">
+                            <ArrowRight className={`w-5 h-5 ${isDisabled ? 'text-gray-600' : 'text-red-500'} transition-all duration-300`} />
+                          </div>
+                        </div>
+                        <div className="hidden sm:block px-4 md:px-6 pb-3 sm:pb-0">
                           <ArrowRight className={`w-5 h-5 md:w-6 md:h-6 ${isDisabled ? 'text-gray-600' : 'text-red-500 group-hover:text-red-400 group-hover:translate-x-1'} transition-all duration-300`} />
                         </div>
-                            </div>
-                          </div>
+                      </div>
+                    </div>
                   );
                   
                   return (

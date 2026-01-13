@@ -305,7 +305,7 @@ export const courseData: Section[] = [
   },
   {
     id: 'section-5',
-    title: 'Gambling part 1',
+    title: 'iGaming Technical Flow',
     lessons: [
       {
         id: 'lesson-5-1',

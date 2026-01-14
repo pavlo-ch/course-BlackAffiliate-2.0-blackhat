@@ -210,6 +210,14 @@ export const toolsData: Tool[] = [
     website: 'https://sms-activate.org/?ref=2587650',
     languages: ['English', 'Russian']
   },
+  {
+    id: '33',
+    name: 'GrizzlySMS',
+    type: 'virtual_numbers',
+    category: 'Virtual Numbers',
+    website: 'https://grizzlysms.com/services',
+    languages: ['English', 'Russian']
+  },
 
   // PWA Services
   {

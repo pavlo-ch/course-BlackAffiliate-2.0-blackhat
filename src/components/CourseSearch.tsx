@@ -30,6 +30,7 @@ export default function CourseSearch() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -43,8 +44,15 @@ export default function CourseSearch() {
       return;
     }
 
+    // Clear any pending debounce timer
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Abort any ongoing request immediately when query changes
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
 
     if (query.trim().length === 0) {
@@ -70,20 +78,23 @@ export default function CourseSearch() {
     setHasSearched(false);
 
     searchTimeoutRef.current = setTimeout(async () => {
+      // Create a new controller for this specific request
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
 
         if (!token) {
           console.error('No auth token available for search');
-          setResults([]);
-          setHasSearched(true);
-          setIsSearching(false);
+          if (!controller.signal.aborted) {
+             setResults([]);
+             setHasSearched(true);
+             setIsSearching(false);
+          }
           return;
         }
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
         
         const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`, {
           headers: {
@@ -92,34 +103,45 @@ export default function CourseSearch() {
           signal: controller.signal
         });
         
-        clearTimeout(timeoutId);
+        if (controller.signal.aborted) return;
 
         if (response.ok) {
           const data: SearchResponse = await response.json();
-          setResults(data.results || []);
-          setHasSearched(true);
+          if (!controller.signal.aborted) {
+            setResults(data.results || []);
+            setHasSearched(true);
+          }
         } else {
           const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
           console.error('Search API error:', response.status, errorData);
+          if (!controller.signal.aborted) {
+            setResults([]);
+            setHasSearched(true);
+          }
+        }
+      } catch (error: any) {
+        if (error.name === 'AbortError' || controller.signal.aborted) {
+           // Request was aborted, do nothing
+           return;
+        } else {
+          console.error('Search error:', error);
           setResults([]);
           setHasSearched(true);
         }
-      } catch (error: any) {
-        if (error.name === 'AbortError') {
-          console.error('Search request timed out');
-        } else {
-          console.error('Search error:', error);
-        }
-        setResults([]);
-        setHasSearched(true);
       } finally {
-        setIsSearching(false);
+        if (!controller.signal.aborted) {
+          setIsSearching(false);
+          abortControllerRef.current = null;
+        }
       }
     }, 300);
 
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
     };
   }, [query, canSearch]);
@@ -247,10 +269,10 @@ export default function CourseSearch() {
                             </div>
                           </div>
                         </div>
-                        {result.matches.length > 0 && (
+                        {result.matches && result.matches.length > 0 && result.matches[0] && (
                           <div className="mt-2 text-xs text-gray-300 line-clamp-2">
-                            {result.matches[0].text.substring(0, 150)}
-                            {result.matches[0].text.length > 150 ? '...' : ''}
+                            {result.matches[0].text?.substring(0, 150)}
+                            {result.matches[0].text?.length > 150 ? '...' : ''}
                           </div>
                         )}
                       </div>

@@ -338,7 +338,7 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
         </div>
 
         <div className="flex-1 flex flex-col">
-          <div className="bg-[#0f1012] border-b border-gray-700 relative z-[10] lg:h-[61px]">
+          <div className="bg-[#0f1012] border-b border-gray-700 relative z-[50] lg:h-[61px]">
             <div className="max-w-7xl mx-auto px-4 lg:py-2">
               <div className="flex items-center justify-between gap-4">
                 <div className="lg:hidden flex-shrink-0">

@@ -1,14 +1,14 @@
 # Tracker Integration
 
-To set up data exchange between your tracker and **App Craft**, follow these steps:
+To set up data exchange between your tracker and **AppCraft**, follow these steps:
 
 ## Passing Parameters
 
-To send data correctly to App Craft, you need to set up the parameters being passed. Depending on your strategy, you can pass parameters either via a simple link or using naming.
+To send data correctly to AppCraft, you need to set up the parameters being passed. Depending on your strategy, you can pass parameters either via a simple link or using naming.
 
 ### Sending Parameters via Link
 
-In your traffic source settings, add parameters to send data. You can use any names, like `sub1`, `subid1`, or `token1`. These are optional for App Craft to work.
+In your traffic source settings, add parameters to send data. You can use any names, like `sub1`, `subid1`, or `token1`. These are optional for AppCraft to work.
 
 Make sure to include a unique ID `{exid}`. This is **required** and should be the first parameter in the link.
 
@@ -69,7 +69,7 @@ rent://12a34567/sub2={sub2}/sub3={sub3}/sub4=bundle
 
 Add the postback URL in your tracker settings:
 
-**App Craft postback URL:**
+**AppCraft postback URL:**
 ```
 https://tools.appcraft.mobi/pb/?exid={token}&action={status}
 ```
@@ -83,7 +83,7 @@ If you're using `sub1` for exid, the link would be:
 https://tools.appcraft.mobi/pb/?exid={sub1}&action={status}
 ```
 
-Replace `{status}` with the conversion status. Currently, App Craft accepts:
+Replace `{status}` with the conversion status. Currently, AppCraft accepts:
 
 - **`reg`** – for registration
 

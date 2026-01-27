@@ -230,10 +230,10 @@ export const toolsData: Tool[] = [
   },
   {
     id: '26',
-    name: 'ZM Apps',
+    name: 'AppCraft',
     type: 'pwa_services',
     category: 'PWA Services',
-    website: 'https://t.me/zmapp',
+    website: 'https://appcraft.mobi/',
     languages: ['English']
   },
 

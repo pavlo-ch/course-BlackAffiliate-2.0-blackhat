@@ -17,7 +17,7 @@ For more accurate analytics, you can optionally pass the deposit amount and tran
 
 **Example postback with payout and currency:**
 ```
-https://tools.zm.app/pb/?exid=abc12345&action=dep&payout=1.05&currency=EUR
+https://tools.appcraft.mobi/pb/?exid=abc12345&action=dep&payout=1.05&currency=EUR
 ```
 
 ## Setting up postbacks
@@ -28,14 +28,14 @@ Set up postbacks for conversion statuses:
 
 - For **registration**, select **download**: 
   ```
-  https://tools.zm.app/pb/?exid={externalid}&action=reg
+  https://tools.appcraft.mobi/pb/?exid={externalid}&action=reg
   ```
 
 - For **deposit**, select **sell**: 
   ```
-  https://tools.zm.app/pb/?exid={externalid}&action=dep
+  https://tools.appcraft.mobi/pb/?exid={externalid}&action=dep
   ```
 
 ![Voluum postback configuration](/img/5.11/image2.png)
 
-Now, **Voluum** will send data to **ZM apps** and track conversions. Make sure that all parameters are passed correctly by testing the traffic before launching.
+Now, **Voluum** will send data to **AppCraft** and track conversions. Make sure that all parameters are passed correctly by testing the traffic before launching.

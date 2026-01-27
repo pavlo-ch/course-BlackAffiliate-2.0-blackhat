@@ -1,125 +1,47 @@
-# Tracker Integration
+# Test PWA Installation
 
-To set up data exchange between your tracker and **ZM apps**, follow these steps:
+It's important to test how your **PWA app** works before starting the traffic. This helps to make sure everything looks correct and the installation works without errors. The test only takes a few minutes.
 
-## Passing Parameters
+> **Important**  
+> During the whole installation process:
+> 
+> - Do not change your IP address or VPN.
+> - Do not switch between mobile data and Wi-Fi.
+> - If the network changes, the installation tracking will break.
 
-To send data correctly to ZM apps, you need to set up the parameters being passed. Depending on your strategy, you can pass parameters either via a simple link or using naming.
+## Step 1: Copy the link to your flow
 
-### Sending Parameters via Link
+You can find it in your dashboard or in the Telegram bot.
 
-In your traffic source settings, add parameters to send data. You can use any names, like `sub1`, `subid1`, or `token1`. These are optional for ZM apps to work.
+![Copy PWA flow link](/img/5.9/image1.png)
 
-Make sure to include a unique ID `{exid}`. This is **required** and should be the first parameter in the link.
+> **How to set up a PWA flow**  
+> See our guide
 
-**Example link with parameters:**
-```
-https://example.com?sub1={exid}&sub2={sub2}&sub3={sub3}
-```
+## Step 2: Open this link on an Android device using the Google Chrome browser
 
-#### App Bundle in the link
+You will see a prompt to install the app.
 
-You can automatically send the app's bundle ID to the tracker. Just use the `bundle` macro in one of the parameters.
+> **Don't use Incognito Mode**  
+> PWAs can't be installed in Incognito Mode. Pressing the button will not install the app.
 
-```
-https://example.com?sub1={exid}&sub2={sub2}&sub3={sub3}&sub4=bundle
-```
+![PWA installation prompt](/img/5.9/image2.png)
 
-The bundle parameter won't show in the final link but will be sent to the tracker.
+## Step 3: Tap Install
 
-### Sending Parameters via Naming
+After installation, the icon of your PWA will appear on the device's home screen.
 
-If you're using naming, you can add dynamic parameters into the link. This helps track where the traffic came from and which campaign it belongs to.
+![PWA app icon on home screen](/img/5.9/image3.png)
 
-**Example of such a link:**
-```
-https://domain.com/{subX}?sub1={exid}&sub3={sub3}&sub4={sub4}&sub5={sub5}
-```
+## Step 4: Open the PWA app
 
-where:
+The first time you open it, there will be a request to allow push notifications. Tap **Allow**. The browser will show your offer.
 
-- `{subX}` – a dynamic part of the link, replaced by the campaign ID or other label.
-- `{exid}` – a unique identifier.
-- `{sub3}`, `{sub4}`, `{sub5}` – extra parameters if you want to send more data.
+![PWA push notifications request](/img/5.9/image4.png)
 
-Once your link is ready, you can set the campaign key in the naming.
+## Step 5: Final verification
 
-**Example:**
-```
-rent://12a34567/subX={campaignid}/sub3={sub3}/sub4={sub4}/sub5={sub5}
-```
+Make sure everything looks correct and you can track the view in your campaign and offer after installation.
 
-#### App Bundle in Naming
+**That's it!** Now your PWA flow is ready for work.
 
-You can also pass app info to the tracker using the `bundle` macro. Just add `bundle` to both the tracking link and the naming.
-
-**Example:**
-
-**Link:**
-```
-https://example.com?sub1={exid}&sub2={sub2}&sub3={sub3}&sub4=bundle
-```
-
-**Naming:**
-```
-rent://12a34567/sub2={sub2}/sub3={sub3}/sub4=bundle
-```
-
-## Setting Up Postback
-
-Add the postback URL in your tracker settings:
-
-**ZM apps postback URL:**
-```
-https://tools.zm.app/pb/?exid={token}&action={status}
-```
-
-Replace `{token}` with the macro that holds the exid.
-Depending on your tracker, this macro could be named `sub1`, `click_id`, or another parameter that holds the user ID.
-
-**Example:**
-If you're using `sub1` for exid, the link would be:
-```
-https://tools.zm.app/pb/?exid={sub1}&action={status}
-```
-
-Replace `{status}` with the conversion status. Currently, ZM apps accepts:
-
-- **`reg`** – for registration
-
-**Postback example for registration:**
-```
-https://tools.zm.app/pb/?exid={token}&action=reg
-```
-
-- **`dep`** – for deposit
-
-**Postback example for deposit:**
-```
-https://tools.zm.app/pb/?exid={token}&action=dep
-```
-
-Make sure this postback URL is added to your traffic source or campaign settings.
-
-> **Info**  
-> For better tracking, you can also send deposit amount and currency.
-
-**Parameters:**
-
-- `payout` – amount paid
-- `currency` – currency used (USD, EUR, etc.)
-
-**Example postback with amount and currency:**
-```
-https://tools.zm.app/pb/?exid=abc12345&action=dep&payout=1.05&currency=EUR
-```
-
-## Integration Examples
-
-Settings may vary depending on the tracker. We've prepared guides for popular platforms:
-
-- **Binom**
-- **Keitaro**
-- **Voluum**
-
-Choose your tracker and follow the setup guide.

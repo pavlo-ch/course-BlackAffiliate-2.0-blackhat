@@ -339,51 +339,57 @@ export const courseData: Section[] = [
       },
       {
         id: 'lesson-5-6',
-        title: 'New PWA Flow',
+        title: 'Splits: General Information and Features',
         type: 'lesson',
         contentPath: '@/data/lessons/lesson-5-6.md'
       },
       {
         id: 'lesson-5-7',
-        title: 'PWA Builder',
+        title: 'Creating and Configuring a Split Flow',
         type: 'lesson',
         contentPath: '@/data/lessons/lesson-5-7.md'
       },
       {
         id: 'lesson-5-8',
-        title: 'Test PWA Installation',
+        title: 'PWA Builder',
         type: 'lesson',
         contentPath: '@/data/lessons/lesson-5-8.md'
       },
       {
         id: 'lesson-5-9',
-        title: 'Integration with Trackers and ZM apps',
+        title: 'Test PWA Installation',
         type: 'lesson',
         contentPath: '@/data/lessons/lesson-5-9.md'
       },
       {
         id: 'lesson-5-10',
-        title: 'Voluum Integration and ZM apps',
+        title: 'Integration with Trackers and App Craft',
         type: 'lesson',
         contentPath: '@/data/lessons/lesson-5-10.md'
       },
       {
         id: 'lesson-5-11',
-        title: 'Traffic Split Between Campaigns in Trackers',
+        title: 'Voluum Integration and App Craft',
         type: 'lesson',
         contentPath: '@/data/lessons/lesson-5-11.md'
       },
       {
         id: 'lesson-5-12',
-        title: 'Setup - From buying to launching',
+        title: 'Traffic Split Between Campaigns in Trackers',
         type: 'lesson',
         contentPath: '@/data/lessons/lesson-5-12.md'
       },
       {
         id: 'lesson-5-13',
-        title: 'Setting up flow via PWA',
+        title: 'Setup - From buying to launching',
         type: 'lesson',
         contentPath: '@/data/lessons/lesson-5-13.md'
+      },
+      {
+        id: 'lesson-5-14',
+        title: 'Setting up flow via PWA',
+        type: 'lesson',
+        contentPath: '@/data/lessons/lesson-5-14.md'
       }
     ]
   },

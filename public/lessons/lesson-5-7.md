@@ -1,190 +1,103 @@
-# PWA Builder
+# Creating and Configuring a Split Flow
 
-The app and PWA market is dynamic, and we currently recommend using ZM Apps, a proven service.
+In this article, we’ll walk you through how to create a new split flow in your AppCraft dashboard and set up rules for flexible traffic management.
 
-[Link](https://zm.app/) 
+### Step 1. General Flow Settings
 
-## Introduction
+First, you need to configure the default rule. The default rule is a fallback scenario that works only if none of the other rules match.
 
-PWA Builder is a tool for creating Progressive Web Applications (PWAs). Before you start building a new PWA, note some important features.
+![image](/img/5.7/image1.png)
 
-### What you need to know before you begin
+**Steps:**
 
-**AI Generation** – A feature that automatically creates text or avatars. Fields with this feature have a button to activate it.
+1. Go to the Splits section and click Create split.  
+2. Select an existing pixel or create a new one.  
 
-![AI Generation](/img/5.7/image1.png)
+![image](/img/5.7/image1.png)
 
-**Auto-translation** – A feature that automatically translates the app text to the browser language. All fields that support auto-translation are marked with a special icon and a note under the field.
+3. Configure GEO cloaking.  
 
-![Auto-translation](/img/5.7/image2.png)
+**Important**  
+Cloaking applies to the entire flow, including the default scenario and all rules.
 
-Auto-translation works only if the field is left empty. To disable this feature, toggle the Auto-translate switch.
+- **No GEO cloaking**: users are not filtered.  
+- **GEO cloaking**: users from specified countries will see the main content, others will see the whitepage.  
+- To use your own whitepage instead of the standard one from AppCraft, enter its URL in the Whitepage Source field.
 
-![Auto-translate switch](/img/5.7/image3.png)
+![image](/img/5.7/image2.png)
 
-## Creating a PWA
+4. Specify the offer/tracker link.  
+   * If the user doesn’t match any rule, they will be redirected directly to the specified offer/tracker, without using apps.
 
-Click the Create button to start working on a new PWA application. A window with creation options will appear:
+![image](/img/5.7/image3.png)
 
-- **PWA games** – templates with interactive game elements.
-- **PWA templates** – ready-made store layout options for PWA.
-- **Create manually** – an empty template with default values.
-- **Copy by Hash ID / by domain** – create an app based on an existing one in our service.
+5. Optionally, add a comment for convenience.  
+6. Click Save.  
 
-![Creation options](/img/5.7/image4.png)
+The split flow is created. Now you can set up rules for more precise traffic control.
 
-Type the name of your PWA. This name will not show in the app, but it will appear in the list of your projects in ZM apps.
+### Step 2. Adding Rules
 
-![PWA name](/img/5.7/image5.png)
+Rules allow you to set display conditions for specific user groups.
 
-Choose the language for the AI-generated descriptions, comments, and tags.
+1. Click Add Rule.  
+2. Give the rule a name.  
 
-![Language selection](/img/5.7/image6.png)
+![image](/img/5.7/image4.png)
 
-## App Design
+3. Set the trigger conditions:  
+   - **By GEO** – the rule applies only to users from the selected countries. You can specify one or multiple countries.  
 
-> **Info:** The PWA builder has a live preview that shows any changes you make in your future app.
+![image](/img/5.7/image4.png)
 
-![Live preview](/img/5.7/image7.png)
+   - **By Platform** – iOS or Android.  
 
-### App Header
+**Heads up**  
+In rules, you can select both iOS and Android as target platforms. However, the system does not validate whether the chosen app matches the user’s actual platform.
 
-Fill in the following fields:
+Here’s what that means:
 
-- **App Name** – Enter the name of your app.
-- **Author / Developer** – Add the developer's name or company name.
-- **Advertisement** – Indicate whether the app contains ads.
+- If a rule targets both iOS and Android, but only an iOS app is added, Android users will still be sent to the iOS app.  
+- If only an Android app is added, iPhone users will see the Android app as well.  
 
-![App header basic fields](/img/5.7/image8.png)
+So, make sure you pick apps carefully when setting up rules. If you want to target for each platform, add apps for both iOS and Android.
 
-- **Verified checkmark** – Confirmation of authenticity next to the app or developer's name.
+   - **By Sub** – set a value that the system will look for. The rule only triggers if the user’s link contains this parameter.
 
-![Verified checkmark](/img/5.7/image9.png)
+**Example**  
+Condition `sub10 = test10` is set → this means you need to add the parameter `sub10=test10` to the final link. The system will then match the parameter and send the user according to this rule.
 
-- **Number of Reviews** – Specify the total number of reviews.
-- **Review dimensions** – A letter indicator for the number of reviews, such as K, M, etc.
-- **Download Count** – Specify the number of downloads.
-- **Note** – Additional information about the app.
+If the sub is not specified in the final link or has a different value, the system will skip this rule and continue checking other rules in order from top to bottom.
 
-![Reviews and downloads](/img/5.7/image10.png)
+4. Click Add split. Select one or more apps for this rule:
 
-- **Editor's Choice** – Mark the app as recommended.
-- **App Size** – Size in megabytes.
-- **Age Rating** – The minimum age for users.
+- You can combine apps for different platforms in a single rule.  
+- Pre-landing is configured separately for each app.  
+- Set the traffic distribution ratio between apps.  
+- Click Save.  
 
-![App details](/img/5.7/image11.png)
+Add as many rules as needed for your tasks. Once done, the split flow will start distributing traffic according to the defined logic.
 
-- **Rating** – Overall rating based on reviews.
-- **Install or Open** – Buttons to download or launch the app.
+### Rule Priority and Order
 
-![Rating and buttons](/img/5.7/image12.png)
+All added rules appear in a list and have a unique ID.
 
-### Screenshots
+- Rules are processed from top to bottom: the higher the rule in the list, the higher its priority.  
+- If the top rule matches, the rest are ignored.  
+- To temporarily disable a rule, use the toggle next to it.  
+- To change the order, drag and drop rules.  
 
-Upload images and GIFs to make your app interface more appealing.
+**Important:** If no rules match, the user is sent to the offer specified in the default settings.
 
-![Screenshots upload](/img/5.7/image13.png)
+### Using Macros in Splits
 
-### App Description
+You can add macros to the final link:
 
-Fill in the description fields:
+- `{rule_id}` — inserts the ID of the triggered rule.  
+- `{rule_name}` — inserts the name of the triggered rule.  
 
-- **Title** – A short name for the section.
-- **Description** – The main text with information about the app.
-- **Tags** – Keywords for quick search.
+**Example:**
 
-![App description fields](/img/5.7/image14.png)
+`https://example.com?sub1={exid}&sub2={rule_id}&sub3={rule_name}`
 
-> **Info:** Use the Generate Description and Generate Tags buttons to automatically generate text for these fields.
-
-## Data Security
-
-Data Security section has default values, but you can edit them depending on your app's specifics:
-
-- **Title** – The section title for data handling.
-- **Description** – Information about data collection, transfer, and protection.
-
-![Data security basic](/img/5.7/image15.png)
-
-- **Sharing** – Data that the app shares with third parties.
-
-![Data sharing](/img/5.7/image16.png)
-
-- **Geolocation** – Information that the app uses the user's location data.
-
-![Geolocation settings](/img/5.7/image17.png)
-
-- **Encryption** – Mark that data is protected by encryption.
-- **Data Deletion** – Information that data can be deleted.
-- **Pseudo-button** – View details.
-
-![Security options](/img/5.7/image18.png)
-
-## Ratings and Reviews
-
-In the Ratings and Reviews section, you can set the rating values for your app:
-
-**Overall Rating** – To change the value, move the rating sliders.
-
-![Rating sliders](/img/5.7/image19.png)
-
-If needed, set a custom rating value.
-
-![Custom rating](/img/5.7/image20.png)
-
-**Name, Description, Did you find this message helpful?** – Default values. Edit them if needed.
-
-![Review details](/img/5.7/image21.png)
-
-## Comments
-
-The Comments section allows you to add both AI-generated and manually created reviews. The date updates automatically. You can choose the date format or disable the comment date update.
-
-![Comments section](/img/5.7/image22.png)
-
-- Click **Generate Comment** to add an AI comment. All fields in the section will be automatically filled.
-- Click **Add Comment** to create a new comment manually. If necessary, edit:
-  - **Author** – Name and avatar.
-  - **Rating** – Star rating.
-  - **Creation Date** – Specify the date or leave it empty.
-  - **Comment** – The review text.
-  - **Helpfulness** – How many users marked the review as helpful.
-
-![Comment editing](/img/5.7/image23.png)
-
-### AI Generation
-
-Use the Generate Avatar and Generate Comment buttons to automatically fill in the fields.
-
-Add a **Developer Response** to reply to comments. Fill in the name, date, and response text manually, or click Generate Response.
-
-![Developer response](/img/5.7/image24.png)
-
-Click **Save changes** to complete the setup.
-
-## Additional Settings
-
-The Additional Settings section is located at the top of the PWA Builder. Here you can adjust the color scheme, app installation format, and additional fields. Go to the section by clicking the Additional Settings button.
-
-![Additional Settings button](/img/5.7/image25.png)
-
-Customize the Install button color. Choose from the options provided or set your custom color.
-
-![Install button color](/img/5.7/image26.png)
-
-Customize the app theme.
-
-![App theme customization](/img/5.7/image27.png)
-
-Choose how the app installation process will look. Click View Demo to see the selected settings on the screen.
-
-![Installation process](/img/5.7/image28.png)
-
-Customize the Additional Fields to change the app download interface. You can modify:
-
-- **Button names:** Delete, Download, Cancel.
-- **Text fields in the installation menu:** Additional subtitle, Hint, Preposition, Installing.
-
-![Additional fields](/img/5.7/image29.png)
-
-> **Info:** If you leave these fields empty, the values will be automatically translated into the user browser language.
+All main settings are done, and the split flow is ready to work. You can always return to the split flow to edit rules as needed.

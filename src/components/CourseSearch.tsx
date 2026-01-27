@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Search, X, FileText, BookOpen, HelpCircle, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Search, X, FileText, BookOpen, HelpCircle, Loader2, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -24,127 +24,199 @@ interface SearchResponse {
   count: number;
 }
 
+type SearchStatus = 'idle' | 'searching' | 'success' | 'error';
+
 export default function CourseSearch() {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [status, setStatus] = useState<SearchStatus>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
+  
+  const searchIdRef = useRef(0);
+  const searchStartTimeRef = useRef<number | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const statusRef = useRef<SearchStatus>('idle');
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const pendingQueryRef = useRef<string>('');
   const router = useRouter();
   const { user } = useAuth();
 
   const accessLevel = user?.access_level || 1;
   const canSearch = accessLevel === 1 || accessLevel === 2 || accessLevel === 3;
 
-  useEffect(() => {
-    if (!canSearch) {
+  const performSearch = useCallback(async (searchQuery: string, searchId: number) => {
+    if (searchQuery.trim().length < 2) {
       return;
     }
 
-    // Clear any pending debounce timer
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
+    pendingQueryRef.current = searchQuery;
 
-    // Abort any ongoing request immediately when query changes
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
-      abortControllerRef.current = null;
     }
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
 
-    if (query.trim().length === 0) {
+    try {
+      if (signal.aborted || searchIdRef.current !== searchId) {
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (signal.aborted || searchIdRef.current !== searchId) {
+        return;
+      }
+      
+      if (!session) {
+        setStatus('error');
+        setErrorMessage('Please log in to search.');
+        searchStartTimeRef.current = null;
+        return;
+      }
+      
+      const token = session?.access_token;
+
+      if (!token) {
+        if (searchIdRef.current === searchId) {
+          setStatus('error');
+          setErrorMessage('Authentication error. Please refresh the page.');
+          searchStartTimeRef.current = null;
+        }
+        return;
+      }
+
+      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+        signal
+      });
+
+      if (signal.aborted || searchIdRef.current !== searchId) {
+        return;
+      }
+
+      if (response.ok) {
+        const data: SearchResponse = await response.json();
+        setResults(data.results || []);
+        setStatus('success');
+        pendingQueryRef.current = '';
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Search failed' }));
+        setStatus('error');
+        setErrorMessage(errorData.error || 'Search failed. Please try again.');
+      }
+    } catch (error: any) {
+      if (signal.aborted) {
+        return;
+      }
+      if (searchIdRef.current !== searchId) {
+        return;
+      }
+      
+      if (error.name === 'AbortError') {
+        return;
+      }
+      
+      setStatus('error');
+      setErrorMessage('Network error. Please try again.');
+    } finally {
+      if (!signal.aborted && searchIdRef.current === searchId) {
+        searchStartTimeRef.current = null;
+        abortControllerRef.current = null;
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!canSearch) return;
+
+    const trimmedQuery = query.trim();
+
+    if (trimmedQuery.length === 0) {
       setResults([]);
-      setHasSearched(false);
-      setIsSearching(false);
+      setStatus('idle');
+      setErrorMessage('');
       setIsOpen(false);
+      searchStartTimeRef.current = null;
       return;
     }
 
-    if (query.trim().length >= 1) {
+    if (trimmedQuery.length >= 1) {
       setIsOpen(true);
     }
 
-    if (query.trim().length < 2) {
+    if (trimmedQuery.length < 2) {
       setResults([]);
-      setHasSearched(false);
-      setIsSearching(false);
+      setStatus('idle');
+      searchStartTimeRef.current = null;
       return;
     }
 
-    setIsSearching(true);
-    setHasSearched(false);
+    searchIdRef.current += 1;
+    const currentSearchId = searchIdRef.current;
+    
+    searchStartTimeRef.current = Date.now();
+    setStatus('searching');
+    setErrorMessage('');
 
-    searchTimeoutRef.current = setTimeout(async () => {
-      // Create a new controller for this specific request
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
-
-        if (!token) {
-          console.error('No auth token available for search');
-          if (!controller.signal.aborted) {
-             setResults([]);
-             setHasSearched(true);
-             setIsSearching(false);
-          }
-          return;
-        }
-        
-        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
-          signal: controller.signal
-        });
-        
-        if (controller.signal.aborted) return;
-
-        if (response.ok) {
-          const data: SearchResponse = await response.json();
-          if (!controller.signal.aborted) {
-            setResults(data.results || []);
-            setHasSearched(true);
-          }
-        } else {
-          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-          console.error('Search API error:', response.status, errorData);
-          if (!controller.signal.aborted) {
-            setResults([]);
-            setHasSearched(true);
-          }
-        }
-      } catch (error: any) {
-        if (error.name === 'AbortError' || controller.signal.aborted) {
-           // Request was aborted, do nothing
-           return;
-        } else {
-          console.error('Search error:', error);
-          setResults([]);
-          setHasSearched(true);
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setIsSearching(false);
-          abortControllerRef.current = null;
-        }
-      }
+    const debounceTimer = setTimeout(() => {
+      performSearch(trimmedQuery, currentSearchId);
     }, 300);
 
     return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
+      clearTimeout(debounceTimer);
+    };
+  }, [query, canSearch, performSearch]);
+
+  useEffect(() => {
+    if (status !== 'searching') return;
+
+    const hardTimeout = setTimeout(() => {
+      if (statusRef.current === 'searching') {
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+          abortControllerRef.current = null;
+        }
+        setStatus('error');
+        setErrorMessage('Search took too long. Please try again.');
+        searchStartTimeRef.current = null;
       }
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+    }, 15000);
+
+    return () => clearTimeout(hardTimeout);
+  }, [status]);
+
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
+
+  useEffect(() => {
+    const handleVisibilityOrFocus = () => {
+      if (!document.hidden && statusRef.current === 'searching' && pendingQueryRef.current) {
+        const startTime = searchStartTimeRef.current;
+        const elapsed = startTime ? Date.now() - startTime : 0;
+        
+        if (elapsed > 3000) {
+          if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+          }
+          searchIdRef.current += 1;
+          const currentSearchId = searchIdRef.current;
+          searchStartTimeRef.current = Date.now();
+          performSearch(pendingQueryRef.current, currentSearchId);
+        }
       }
     };
-  }, [query, canSearch]);
+
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+    };
+  }, [performSearch]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -160,13 +232,37 @@ export default function CourseSearch() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, query]);
 
-  const handleResultClick = (lessonId: string) => {
-    setIsOpen(false);
+  const handleClear = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    searchIdRef.current += 1;
+    searchStartTimeRef.current = null;
+    pendingQueryRef.current = '';
     setQuery('');
     setResults([]);
-    setHasSearched(false);
+    setStatus('idle');
+    setErrorMessage('');
+    setIsOpen(false);
+  }, []);
+
+  const handleResultClick = useCallback((lessonId: string) => {
+    handleClear();
     router.push(`/lesson/${lessonId}`);
-  };
+  }, [handleClear, router]);
+
+  const handleRetry = useCallback(() => {
+    if (query.trim().length >= 2) {
+      searchIdRef.current += 1;
+      const currentSearchId = searchIdRef.current;
+      searchStartTimeRef.current = Date.now();
+      pendingQueryRef.current = query.trim();
+      setStatus('searching');
+      setErrorMessage('');
+      performSearch(query.trim(), currentSearchId);
+    }
+  }, [query, performSearch]);
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -185,6 +281,8 @@ export default function CourseSearch() {
     return null;
   }
 
+  const trimmedQuery = query.trim();
+
   return (
     <div className="course-search-container relative w-full max-w-md">
       <div className="relative">
@@ -195,11 +293,9 @@ export default function CourseSearch() {
           ref={searchInputRef}
           type="text"
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-          }}
+          onChange={(e) => setQuery(e.target.value)}
           onFocus={() => {
-            if (query.trim().length >= 1) {
+            if (trimmedQuery.length >= 1) {
               setIsOpen(true);
             }
           }}
@@ -208,12 +304,7 @@ export default function CourseSearch() {
         />
         {query && (
           <button
-            onClick={() => {
-              setQuery('');
-              setResults([]);
-              setHasSearched(false);
-              setIsOpen(false);
-            }}
+            onClick={handleClear}
             className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
           >
             <X className="w-4 h-4" />
@@ -221,24 +312,37 @@ export default function CourseSearch() {
         )}
       </div>
 
-      {isOpen && query.trim().length >= 1 && (
+      {isOpen && trimmedQuery.length >= 1 && (
         <div className="absolute top-full left-0 mt-1 w-full min-w-[300px] max-w-[calc(100vw-2rem)] bg-[#0f1012] border border-gray-700 rounded-lg shadow-2xl z-[9999]">
-          
           <div className="max-h-96 overflow-y-auto">
-            {query.trim().length < 2 && (
+            
+            {trimmedQuery.length < 2 && (
               <div className="p-4 text-center text-gray-400 text-sm">
                 Enter at least 2 characters to search...
               </div>
             )}
             
-            {query.trim().length >= 2 && isSearching && (
+            {trimmedQuery.length >= 2 && status === 'searching' && (
               <div className="p-4 text-center text-gray-400 flex items-center justify-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span>Searching...</span>
               </div>
             )}
 
-            {!isSearching && hasSearched && query.trim().length >= 2 && (
+            {trimmedQuery.length >= 2 && status === 'error' && (
+              <div className="p-4 text-center">
+                <div className="text-red-400 mb-3">{errorMessage}</div>
+                <button
+                  onClick={handleRetry}
+                  className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-md hover:bg-gray-800"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Try again
+                </button>
+              </div>
+            )}
+
+            {trimmedQuery.length >= 2 && status === 'success' && (
               <>
                 {results.length === 0 ? (
                   <div className="p-4 text-center">
@@ -288,4 +392,3 @@ export default function CourseSearch() {
     </div>
   );
 }
-

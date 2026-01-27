@@ -1,109 +1,61 @@
-# FB Account Setup
+# Game plan:
 
-## 1. Choosing an offer*
+## Step 1: Link Accounts to Business Manager
 
-* We analyze competitors, analyze existing offers, conditions, payments, geo
+* Depending on the type of accounts you're using, we recommend working with **agency ad accounts** for running traffic. Get in touch with the seller and clarify the details regarding how the ad account will be handed over — the process can vary slightly from one seller to another.  
+* Read more about account mechanics and Business Manager here:  
+   [Account Mechanics Guide](https://docs.google.com/document/d/1Nxnp4bHJsVcQy47Bei5HOXURq4IsZuYcqKiG_aC44co/edit?usp=sharing)  
+   [Setup Instructions](https://docs.google.com/document/d/1UrKcP95qasXqDNei6KrTUgotdXWt60YiGuMySd1EHE0/edit?usp=sharing)
 
-* Choose an offer for PWA 
+  **Accounts**: Trusted Facebook accounts from Fan Agency \- TG @funagency (no farming). In case of account problems or bans, the agency issues a new account.
 
-## 2. Account Preparation:
+## Step 2: Set Up Fan Pages
 
-* Purchase an Agency account for work
+* Log into each account and check for an existing Fan Page.  
+* Once you’ve chosen your offers, rename the Fan Pages to match the offer’s vibe (something close to the offer’s name).  
+* Add an avatar, photo Profile header, page description, you need to specify the geo of your offer, and 1-3 post with text and a link to your offer.  
+   *Why?* Ads run through the Fan Page, so it needs to look legit. If a user clicks from the ad to the page instead of the offer, they shouldn’t lose trust in you. In auctions, the fan page participates first, and only then the ad itself. That's why profile completeness and trust level matter.
 
-* Set up your Fan Page to match the design of your PWA. Add a few posts related to your niche so that if a user clicks on the Fan Page, they don’t lose trust and continue down the funnel via the Fan Page link.
+  \- Run post boosts on the page  
+  \- Send traffic to warm it
 
-* Use one Fan Page for 2-3 ad accounts and for one offer.
+  [Example](https://drive.google.com/drive/folders/10A_4kKuN9rD9NhV47tu1tTH0GqBS7xbS)
 
-## 3. Business Manager Setup(If you work on your own BM):
-Contact your agency account provider, ask for a pixel, you can create it on your King account and then transfer it to the agency
+## Step 3: Create and Share a Pixel
 
-* [Facebook Business Settings](https://business.facebook.com/latest/settings) 
+* Create a pixel through your Business Manager and share access with the necessary accounts.  
+* We typically use one pixel \= 1 geo \= 1–3 offers.  
+* This step is covered in the instructions linked in Step 2\.  
+  [Pixel settings, 2 ways](https://docs.google.com/document/d/1sKILa-KpETI6eDAI9yqR_JOgG-2asnHbz2n0tVFjLYM/edit?tab=t.0#heading=h.i6odwhve0m8z)
 
-* Log into the King’s Business Manager (BM).
+  More details in the PWA Setup Guide below
 
-* Link it to an existing BM and add 3-4 ad accounts.
+## Step 4: Spy on Competitor Creatives
 
-## 4. Pixel API Setup:
+* Use the SPY service to check out competitor creatives for your target geos.  
+* If you find good ones, either download and uniquify them or take the concept and create something new.  
+* SPY Tool: [Tyver](https://www.youtube.com/redirect?event=video_description&redir_token=QUFFLUhqbDlEYVZXVmtZT1QwZUI5TTc2VnJtUkxmSDlLZ3xBQ3Jtc0trMVNzUGhjSk80ckQxbVE5Zm5CV0xsZm5VTnR6U1o0LTJwUHhlRzF4NXp3cEowbzhOX05OY0NaTE5pQk9ENUJVaDJlMlVlTENXTWxyZHBkbzI3S240cU1TbjhKdXVpeUF5eWRlX0NwQktaM1NiYWVhWQ&q=https%3A%2F%2Fgoo.su%2F00RPN&v=HFnv0wUCYXI)
 
-* Create a Pixel API conversion and name it based on your domain \+ GEO for convenience.
+## Step 5: Link Payment Cards to Ad Accounts
 
-## 5. Sharing Pixel Access:
+* Add payment cards to your ad accounts.  
+* Heads-up: This can get tricky if the card BINs are low-quality or if other Media Buyers using those cards didn’t pay their bills—FB might flag them. It’s normal; just test a few different cards.
 
-* Share pixel access with all active ad accounts.    
-![image](/img/5.13/image1.webp)
-![image](/img/5.13/image2.webp)
+  *This is only relevant if you do not work on agency accounts*
 
-* If one of the accounts gets fully blocked, remove it from the BM.
+* Tip: Choose countries without VAT to avoid extra ad taxes.
 
-* Add user access for a pixel
+## Step 6: Set Up the PWA
 
-## ZM Apps \ PWA 
-Go to https://zm.app/, create a PWA design, and customize it.
+* Set up a PWA and grab the final link to use in your ads.  
+* Quick question: Are you familiar with PWA? It’s the go-to method for running traffic on gambling offers right now.  
+  * PWA Theory: [Link](https://docs.google.com/document/d/1woH9-QpEIWh3jLX7H4skov6Rb-KIyhuS4PclTEAuEUI/edit?tab=t.0#heading=h.g6c0jz1fperp)  
+  * PWA Setup Guide: [Link](https://docs.google.com/document/d/1a8XA-mXCLNxPCahbY73E61qJepXStLrArLmsmxh2kNc/edit?usp=sharing)  
+* For PWA, use services like [PWA GROUP](https://pwa.group/) to set up app design and cloaking. We’ll use Keitaro as a tracker in this setup.  
+* Why PWA? It’s a site that mimics the Play Market or App Store. You can customize designs, reviews, and visuals for your “app.” Users click from the ad to the site, download the app, and the offer opens in a webview. You can also set up push notifications to remind users about the offer and deposits.
 
-## Launching an advertising account
+## Step 7: Set Up the Ad Campaign
 
-1. Campaign Launch Strategy (1:3:1):  
-   * For fresh accounts, use the 1:3:1 system:  
-     * 1 Campaign  
-     * 3 Ad Sets  
-     * 1 Ad  
-   * After reaching a certain spend threshold, you can launch new campaigns.
+* Guide on running ads with tips and tricks: [Link](https://docs.google.com/document/d/1KS-rF9yBdl_h0e3ir1T_YeCvvgmsZmXDNfhc25qykAw/edit?tab=t.0#heading=h.zgxdwol045n)  
+* Video on setting up the ad campaign: [Link](https://drive.google.com/file/d/1ZB7eav4ZDGv6IYndtyK_YVByo3nXw596/view?usp=sharing)
 
-2. Campaign Scheduling:  
-   * Set the campaign launch time to 00:00 based on the account’s time zone. This is mandatory as it helps improve ad delivery.
-
-## Recommendations 
-
-When setting up an ad on FB, select the “play” button
-
-In the “link to show” field, paste the link to Google Play there
-
-We launch traffic only on mobile devices (depending on the Android/iOS offer)
-
-We use UTM tags for our link to the offer, write values for different Sub
-
-You need to post at least 5 comments on our PWA
-
-   
-**Rules for passing moderation:**
-
-- Be sure to set the scheduled launch for 00:00 the next day, according to the time zone of your account  
-    
-- Video creative should last more than 3 minutes (our content is about 30-40 seconds, then we give white content)
-
-- You need to remove metadata before uploading to Ads manager [https://online-metadata.com/en](https://online-metadata.com/en) 
-
-
-- Video should be compressed to 20mb [https://www.video2edit.com/](https://www.video2edit.com/) 
-
-- Create or generate a unique cover for the video, add the cover in the ad settings
-
-<img src="/img/5.13/image3.webp" alt="image" width="50%">
-
-Example
-
-![image](/img/5.13/image4.webp)
-
-![image](/img/5.13/image5.webp)
-
-- Uniqueize texts through various services [https://fsymbols.com/generators/](https://fsymbols.com/generators/) 
-
-- Fill in as many ad fields as possible (title, description, body text) to reduce the risk of being banned. We can test the text or emoji with a country flag or something else. In the title, we can try to give the emoji a star, sometimes it works well
-
-- In the targeting settings, we add Antarctica to the geo we have chosen, there will be no impressions there, but it will help to confuse the FB moderation
-
-## Our Global Goal
-
-1. Drive Traffic from Multiple Accounts Linked to Our Pixel:  
-   * Use several accounts connected to our pixel to maximize data collection.
-
-2. Gather as Much Data as Possible:  
-   * Allow the pixel to learn and understand which audience to target.
-
-3. Pixel Training for Specific GEO and Audience:  
-   * The pixel learns based on the specific GEO and audience, enabling it to be linked to other Business Managers and accounts in the future.
-
-4. Launch Traffic, Pass Moderation, and Start Showing Ads:  
-   * Begin traffic campaigns, ensure ads pass moderation, and start displaying them.
-
-5. Monitor Metrics and Optimize:

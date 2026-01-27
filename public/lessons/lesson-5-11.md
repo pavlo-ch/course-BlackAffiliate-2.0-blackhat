@@ -1,57 +1,41 @@
-# Traffic Split Between Campaigns in Trackers
+# Voluum Integration
 
-If you need to split traffic between campaigns in your tracker for a single **iOS link** or **Android naming convention**, you will need to create a general campaign in your tracker. This campaign will be responsible for routing traffic to the appropriate campaigns.
+Go to the **Traffic sources** section ➜ **Create** ➜ **Create custom traffic source**.
 
-The main principle of this setup is to use one of the link parameters (**subs**) as a basis for splitting traffic. Below, we will walk through the configuration process using **Keitaro** and **Binom** as examples.
+In the **Parameters** section, specify the name `exid` and the macro `{exid}` for the External ID parameter.
 
-## Configuring Traffic Split in Keitaro
+![Voluum traffic source setup](/img/5.11/image1.png)
 
-1. Create a general campaign in your tracker.
+## Optional payout and currency parameters
 
-2. Set up a flow by clicking **Create flow**.
+For more accurate analytics, you can optionally pass the deposit amount and transaction currency.
 
-3. Configure the flow:
-   - Enter a name in the **Name** field.
-   - Select the flow type: **Forced**.
+**Parameters:**
 
-4. Define the flow schema:
-   - Go to the **Schema** tab.
-   - In the **Action** dropdown, select **Send to campaign**.
-   - From the **Campaign** list, choose the campaign to which the traffic should be routed.
+- `payout` – deposit amount
+- `currency` – transaction currency (e.g., USD, EUR)
 
-![Keitaro flow schema configuration](/img/5.11/image1.png)
+**Example postback with payout and currency:**
+```
+https://tools.zm.app/pb/?exid=abc12345&action=dep&payout=1.05&currency=EUR
+```
 
-5. Add filters:
-   - Navigate to the **Filters** tab.
-   - In the **Add filter** dropdown, select the parameter that will be used for splitting traffic (for example, `sub_id_1`).
-   - Specify the parameter value for the current flow.
+## Setting up postbacks
 
-![Keitaro filters configuration](/img/5.11/image2.png)
+Go to **Passing conversion info to traffic source** and select **Traffic source postback URL per event type**.
 
-6. Repeat this process for each target campaign where traffic needs to be routed.
+Set up postbacks for conversion statuses:
 
-7. Add a fallback flow with the type **Default** to handle traffic that does not meet any specified rules.
-> **Important**  
-> To ensure the integration works correctly, it is recommended to use **Keitaro version 11** or higher. Earlier versions may not support some of the functionality described in this guide.
+- For **registration**, select **download**: 
+  ```
+  https://tools.zm.app/pb/?exid={externalid}&action=reg
+  ```
 
-## Configuring Traffic Split in Binom
+- For **deposit**, select **sell**: 
+  ```
+  https://tools.zm.app/pb/?exid={externalid}&action=dep
+  ```
 
-1. Select a token to pass the **Buyer ID** in the **Traffic Source Settings**.
+![Voluum postback configuration](/img/5.11/image2.png)
 
-![Binom traffic source settings](/img/5.11/image3.png)
-
-2. Create a general campaign in your tracker.
-
-3. Configure the **Default Path** to route traffic that does not match any specified rules.
-
-![Binom default path configuration](/img/5.11/image4.png)
-
-4. Set up rules for each **Buyer ID** in the **Rules** section:
-
-![Binom rules section](/img/5.11/image5.png)
-
-5. For each rule, configure the path as **Landing → Direct**.
-
-6. In the **Offer** field, specify the campaign for the corresponding buyer.
-
-![Binom offer configuration](/img/5.11/image6.png)
+Now, **Voluum** will send data to **ZM apps** and track conversions. Make sure that all parameters are passed correctly by testing the traffic before launching.

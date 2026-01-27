@@ -22,13 +22,13 @@ https://your_domain.com/postback?clickid=123456&event=registration
 
 ## Extending Data Flow
 
-Take your tracking to the next level by sharing this data with external tools. For instance, if you’re using an app rental service like ZM Apps alongside Facebook ads:
+Take your tracking to the next level by sharing this data with external tools. For instance, if you’re using an app rental service like App Craft alongside Facebook ads:
 
 * **Data Reception**: Your system logs the registration from the affiliate network.  
-* **Forwarding to App Rental**: In the S2S Postback settings, configure data transfer to ZM Apps, which automatically handles the relay.  
-* **Facebook Optimization**: ZM Apps sends the registration info to Facebook, enabling its algorithm to refine ad targeting and improve ROI.
+* **Forwarding to App Rental**: In the S2S Postback settings, configure data transfer to App Craft, which automatically handles the relay.  
+* **Facebook Optimization**: App Craft sends the registration info to Facebook, enabling its algorithm to refine ad targeting and improve ROI.
 
 This seamless data pipeline automates conversion tracking, helping you scale campaigns efficiently while dodging manual updates.
 
-**Pro Tip**: Ensure your postback URLs are secure and test them with ZM Apps to confirm data flows correctly, especially during Facebook’s strict moderation phases.
+**Pro Tip**: Ensure your postback URLs are secure and test them with App Craft to confirm data flows correctly, especially during Facebook’s strict moderation phases.
 

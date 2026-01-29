@@ -164,6 +164,14 @@ export const toolsData: Tool[] = [
     website: 'https://keitaro.io/85457/info',
     languages: ['English']
   },
+  {
+    id: '34',
+    name: 'Voluum',
+    type: 'tracking',
+    category: 'Tracking Solutions',
+    website: 'https://voluum.com/',
+    languages: ['English']
+  },
 
   // Hosting
   {

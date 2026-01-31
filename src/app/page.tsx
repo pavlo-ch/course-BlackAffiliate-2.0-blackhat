@@ -5,7 +5,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import AccessControl from '@/components/AccessControl';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
-import { ArrowRight, Play, FileText, HelpCircle, Map, Tag, Wrench, Settings, Calculator } from 'lucide-react';
+import { ArrowRight, Play, FileText, HelpCircle, Map, Tag, Wrench, Settings, Calculator, Wallet } from 'lucide-react';
 import { courseData } from '@/data/courseData';
 import AnnouncementsButton from '@/components/AnnouncementsButton';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
@@ -136,6 +136,13 @@ export default function Home() {
                     Black Affiliate
                   </h1>
                   <div className="absolute top-0 right-0 flex items-center gap-2">
+                    <Link 
+                      href="/cabinet"
+                      className="p-2 text-white hover:bg-white/10 rounded-full transition-colors relative"
+                      title="My Cabinet"
+                    >
+                      <Wallet className="w-6 h-6" />
+                    </Link>
                     <AnnouncementsButton
                       unreadCount={unreadCount}
                       onClick={() => setShowAnnouncementsList(true)}

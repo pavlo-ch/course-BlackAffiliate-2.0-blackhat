@@ -2,11 +2,26 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { User, Plus, Trash2, Mail, Shield, Calendar, ArrowLeft, Clock, Check, X, Bell, Edit3, Megaphone, Key, Loader2, Circle } from 'lucide-react';
+import { User, Plus, Trash2, Mail, Shield, Calendar, ArrowLeft, Clock, Check, X, Bell, Edit3, Megaphone, Key, Loader2, Circle, DollarSign, ExternalLink, Wallet } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { User as UserType, RegistrationRequest, ACCESS_LEVELS, AccessLevel } from '@/types/auth';
 import { AnnouncementWithReadStatus, CreateAnnouncementRequest } from '@/types/announcements';
 import { supabase } from '@/lib/supabase';
+
+interface Transaction {
+  id: string;
+  user_id: string;
+  amount: number;
+  currency: string;
+  crypto_address: string;
+  transaction_hash: string;
+  status: 'pending' | 'confirmed' | 'rejected';
+  created_at: string;
+  profiles?: {
+    email: string;
+    name: string | null;
+  };
+}
 
 let cachedToken: string | null = null;
 let tokenFetchPromise: Promise<string | null> | null = null;
@@ -108,7 +123,7 @@ export default function AdminPanel() {
   const [registrationRequests, setRegistrationRequests] = useState<RegistrationRequest[]>([]);
   const [users, setUsers] = useState<UserType[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [activeTab, setActiveTab] = useState<'users' | 'requests' | 'announcements'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'requests' | 'announcements' | 'transactions'>('users');
   const [newUser, setNewUser] = useState({
     email: '',
     password: '',
@@ -141,6 +156,14 @@ export default function AdminPanel() {
   const [changingPassword, setChangingPassword] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  
+  // Транзакції та баланс
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState(true);
+  const [adjustingBalance, setAdjustingBalance] = useState<string | null>(null);
+  const [balanceAmount, setBalanceAmount] = useState('');
+  const [balanceType, setBalanceType] = useState<'add' | 'set'>('add');
+  const [isUpdatingBalance, setIsUpdatingBalance] = useState(false);
 
   const loadUsers = useCallback(async () => {
     setIsLoadingUsers(true);
@@ -237,10 +260,26 @@ export default function AdminPanel() {
     }
   }, []);
 
+  const loadTransactions = useCallback(async () => {
+    setIsLoadingTransactions(true);
+    try {
+      const response = await fetch('/api/admin/transactions');
+      const data = await response.json();
+      if (data.success) {
+        setTransactions(data.transactions);
+      }
+    } catch (error) {
+      console.error('Error loading transactions:', error);
+    } finally {
+      setIsLoadingTransactions(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadRequests();
     loadUsers();
     loadAnnouncements();
+    loadTransactions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -387,6 +426,53 @@ export default function AdminPanel() {
       alert('Error updating password');
     } finally {
       setIsUpdatingPassword(false);
+    }
+  };
+
+  const handleUpdateTransaction = async (id: string, status: 'confirmed' | 'rejected') => {
+    try {
+      const response = await fetch('/api/admin/transactions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        await loadTransactions();
+        await loadUsers(); // Balance might have changed
+      } else {
+        alert(data.message || 'Error updating transaction');
+      }
+    } catch (error) {
+      console.error('Error updating transaction:', error);
+    }
+  };
+
+  const handleAdjustBalance = async (userId: string) => {
+    if (!balanceAmount || isNaN(parseFloat(balanceAmount))) {
+      alert('Please enter a valid amount');
+      return;
+    }
+    setIsUpdatingBalance(true);
+    try {
+      const response = await fetch('/api/admin/balance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, amount: parseFloat(balanceAmount), type: balanceType }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        alert('Balance updated successfully');
+        setAdjustingBalance(null);
+        setBalanceAmount('');
+        await loadUsers();
+      } else {
+        alert(data.message || 'Error adjusting balance');
+      }
+    } catch (error) {
+      console.error('Error adjusting balance:', error);
+    } finally {
+      setIsUpdatingBalance(false);
     }
   };
 
@@ -673,6 +759,22 @@ export default function AdminPanel() {
                 <Megaphone className="w-4 h-4" />
                 Announcements ({announcements.length})
               </button>
+              <button
+                onClick={() => setActiveTab('transactions')}
+                className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                  activeTab === 'transactions'
+                    ? 'bg-primary text-white'
+                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                <Wallet className="w-4 h-4" />
+                Transactions ({transactions.length})
+                {transactions.filter(t => t.status === 'pending').length > 0 && (
+                  <span className="bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center ml-2">
+                    {transactions.filter(t => t.status === 'pending').length}
+                  </span>
+                )}
+              </button>
             </div>
             {activeTab === 'users' && (
               <button
@@ -893,6 +995,18 @@ export default function AdminPanel() {
                     )}
                     <button
                       onClick={() => {
+                        setAdjustingBalance(userItem.id);
+                        setBalanceAmount('');
+                        setBalanceType('add');
+                      }}
+                      className="bg-green-600 hover:bg-green-700 p-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                      title="Adjust balance"
+                    >
+                      <DollarSign className="w-4 h-4" />
+                      <span className="md:hidden">Balance</span>
+                    </button>
+                    <button
+                      onClick={() => {
                         setChangingPassword(userItem.id);
                         setNewPassword('');
                       }}
@@ -912,6 +1026,51 @@ export default function AdminPanel() {
                       <span className="md:hidden">Delete</span>
                     </button>
                   </div>
+                  
+                  {/* Форма регулювання балансу */}
+                  {adjustingBalance === userItem.id && (
+                    <div className="mt-4 p-4 bg-gray-700 rounded-lg w-full">
+                      <h4 className="text-sm font-medium text-gray-300 mb-3">Adjust Balance for {userItem.email}</h4>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <select
+                          value={balanceType}
+                          onChange={(e) => setBalanceType(e.target.value as 'add' | 'set')}
+                          className="px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                        >
+                          <option value="add">Add to current</option>
+                          <option value="set">Set total</option>
+                        </select>
+                        <input
+                          type="number"
+                          value={balanceAmount}
+                          onChange={(e) => setBalanceAmount(e.target.value)}
+                          placeholder="Amount"
+                          className="flex-1 px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleAdjustBalance(userItem.id)}
+                            disabled={isUpdatingBalance || !balanceAmount}
+                            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                          >
+                            {isUpdatingBalance ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Check className="w-4 h-4" />
+                            )}
+                            Save
+                          </button>
+                          <button
+                            onClick={() => setAdjustingBalance(null)}
+                            className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                          >
+                            <X className="w-4 h-4" />
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Форма зміни пароля */}
                   {changingPassword === userItem.id && (
@@ -1241,6 +1400,84 @@ export default function AdminPanel() {
                   )}
                 </div>
               </div>
+            </div>
+          )}
+          {activeTab === 'transactions' && (
+            <div className="space-y-4">
+              {isLoadingTransactions ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                  <span className="ml-3 text-gray-400">Loading transactions...</span>
+                </div>
+              ) : transactions.length === 0 ? (
+                <div className="text-center py-8">
+                  <Wallet className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+                  <p className="text-gray-400">No transactions found</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="border-b border-gray-700">
+                        <th className="py-3 px-4 text-sm font-medium text-gray-400 uppercase">User</th>
+                        <th className="py-3 px-4 text-sm font-medium text-gray-400 uppercase">Amount</th>
+                        <th className="py-3 px-4 text-sm font-medium text-gray-400 uppercase">Details</th>
+                        <th className="py-3 px-4 text-sm font-medium text-gray-400 uppercase">Status</th>
+                        <th className="py-3 px-4 text-sm font-medium text-gray-400 uppercase">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                      {transactions.map((tx) => (
+                        <tr key={tx.id} className="hover:bg-white/[0.02]">
+                          <td className="py-4 px-4">
+                            <div className="text-sm font-medium">{tx.profiles?.name || 'Unknown'}</div>
+                            <div className="text-xs text-gray-500">{tx.profiles?.email}</div>
+                          </td>
+                          <td className="py-4 px-4">
+                            <div className="text-sm font-bold text-green-400">${tx.amount}</div>
+                            <div className="text-xs text-gray-500">{tx.currency}</div>
+                          </td>
+                          <td className="py-4 px-4">
+                            <div className="text-xs text-gray-400 truncate max-w-[200px]" title={tx.transaction_hash}>
+                              Hash: {tx.transaction_hash}
+                            </div>
+                            <div className="text-[10px] text-gray-500 mt-1">
+                              {new Date(tx.created_at).toLocaleString()}
+                            </div>
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className={`px-2 py-1 rounded-full text-[10px] uppercase font-bold ${
+                              tx.status === 'confirmed' ? 'bg-green-500/20 text-green-500' :
+                              tx.status === 'pending' ? 'bg-orange-500/20 text-orange-500' :
+                              'bg-red-500/20 text-red-500'
+                            }`}>
+                              {tx.status}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4">
+                            {tx.status === 'pending' && (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleUpdateTransaction(tx.id, 'confirmed')}
+                                  className="p-1 px-2 bg-green-600 hover:bg-green-700 rounded text-white text-xs flex items-center gap-1"
+                                >
+                                  <Check className="w-3 h-3" /> Approve
+                                </button>
+                                <button
+                                  onClick={() => handleUpdateTransaction(tx.id, 'rejected')}
+                                  className="p-1 px-2 bg-red-600 hover:bg-red-700 rounded text-white text-xs flex items-center gap-1"
+                                >
+                                  <X className="w-3 h-3" /> Reject
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
         </div>

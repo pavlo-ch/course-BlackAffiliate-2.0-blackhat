@@ -15,8 +15,7 @@ export default function CabinetPage() {
   
   const [balance, setBalance] = useState<UserBalance | null>(null);
   const [wallets, setWallets] = useState<CryptoWallet[]>([]);
-  const [isDataLoading, setIsDataLoading] = useState(true);
-
+  const [isFetching, setIsFetching] = useState(true);
 
   // Effect 1: Access Control
   useEffect(() => {
@@ -25,34 +24,88 @@ export default function CabinetPage() {
     }
   }, [isLoading, isAuthenticated, router]);
 
-  // Effect 2: Reset loading state on mount to ensure fresh data fetch
+  // Effect 2: Data Fetching with Safety
   useEffect(() => {
-    setIsDataLoading(true);
-  }, []);
+    let isMounted = true;
+    
+    // Safety timeout to prevent infinite loading
+    const safetyTimeout = setTimeout(() => {
+      if (isMounted && isFetching) {
+        console.warn('⚠️ Force stopping loading spinner after timeout');
+        setIsFetching(false);
+      }
+    }, 5000);
 
-  // Effect 3: Data Fetching
-  useEffect(() => {
-    if (user?.id && isDataLoading) {
-      const fetchData = async () => {
-        try {
-          const [balanceData, walletsData] = await Promise.all([
-            getUserBalance(user.id),
-            getActiveWallets()
-          ]);
+    const fetchData = async () => {
+      // Don't fetch if no user
+      if (!user?.id) return;
+
+      setIsFetching(true);
+      try {
+        const [balanceData, walletsData] = await Promise.all([
+          getUserBalance(user.id),
+          getActiveWallets()
+        ]);
+        
+        if (isMounted) {
           setBalance(balanceData);
           setWallets(walletsData);
-        } catch (error) {
-          console.error('Failed to load cabinet data:', error);
-        } finally {
-          setIsDataLoading(false);
         }
-      };
+      } catch (error) {
+        console.error('Failed to load cabinet data:', error);
+      } finally {
+        if (isMounted) {
+          setIsFetching(false);
+        }
+      }
+    };
 
-      fetchData();
+    // Initial fetch
+    if (user?.id) {
+       fetchData();
+    } else if (!isLoading && !user) {
+        if (isMounted) setIsFetching(false);
     }
-  }, [user?.id, isDataLoading]);
 
-  if (isLoading || isDataLoading) {
+    // Refresh on tab focus
+    const onFocus = () => {
+      if (user?.id && !isFetching) {
+        fetchData();
+      }
+    };
+
+    window.addEventListener('focus', onFocus);
+    
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimeout);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [user?.id, isLoading]); // Removed isFetching from deps to avoid loop
+
+  // Manual refresh handler
+  const handleRefresh = async () => {
+    if (!user?.id) return;
+    
+    setIsFetching(true);
+    try {
+      const [balanceData, walletsData] = await Promise.all([
+        getUserBalance(user.id),
+        getActiveWallets()
+      ]);
+      setBalance(balanceData);
+      setWallets(walletsData);
+    } catch (error) {
+      console.error('Failed to refresh data:', error);
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  // Show loading state ONLY active fetching AND no data yet
+  const showLoading = isLoading || (isFetching && !balance);
+
+  if (showLoading) {
     return (
       <div className="min-h-screen pt-20 flex flex-col items-center justify-center bg-black">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
@@ -66,13 +119,16 @@ export default function CabinetPage() {
   return ( // Added mt-24 to offset fixed header
     <div className="min-h-screen bg-black text-white pt-10 px-4 pb-20"> 
       <div className="max-w-4xl mx-auto space-y-8">
-        <Link 
-          href="/" 
-          className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors group"
-        >
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          Back to Course
-        </Link>
+        <div className="flex justify-between items-start">
+          <Link 
+            href="/" 
+            className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors group"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            Back to Course
+          </Link>
+        </div>
+
         <div>
           <h1 className="text-3xl font-bold mb-2">My Cabinet</h1>
           <p className="text-gray-400">Manage your balance and deposits.</p>

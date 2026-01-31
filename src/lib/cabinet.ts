@@ -28,32 +28,63 @@ export interface DepositTransaction {
 }
 
 export const getActiveWallets = async (): Promise<CryptoWallet[]> => {
-  const { data, error } = await supabase
-    .from('crypto_wallets')
-    .select('*')
-    .eq('is_active', true);
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.access_token) {
+      console.warn('No active session for fetching wallets');
+      return [];
+    }
 
-  if (error) {
-    console.error('Error fetching crypto wallets:', error);
-    throw error;
+    const response = await fetch('/api/cabinet/wallets', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Failed in getActiveWallets:', error);
+    return [];
   }
-
-  return data || [];
 };
 
 export const getUserBalance = async (userId: string): Promise<UserBalance | null> => {
-  const { data, error } = await supabase
-    .from('user_balances')
-    .select('*')
-    .eq('user_id', userId)
-    .single();
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.access_token) {
+      console.warn('No active session for fetching balance');
+      return null;
+    }
 
-  if (error && error.code !== 'PGRST116') { // PGRST116 is "Relation null" (no rows found)
-    console.error('Error fetching user balance:', error);
-    throw error;
+    const response = await fetch('/api/cabinet/balance', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Failed in getUserBalance:', error);
+    return null;
   }
-
-  return data;
 };
 
 export const createDepositRequest = async (

@@ -6,6 +6,8 @@ import { BalanceCard } from '@/components/cabinet/BalanceCard';
 import { TopUpTabs } from '@/components/cabinet/TopUpTabs';
 import { getUserBalance, getActiveWallets, UserBalance, CryptoWallet } from '@/lib/cabinet';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 
 export default function CabinetPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -15,13 +17,22 @@ export default function CabinetPage() {
   const [wallets, setWallets] = useState<CryptoWallet[]>([]);
   const [isDataLoading, setIsDataLoading] = useState(true);
 
+
+  // Effect 1: Access Control
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.push('/');
-      return;
     }
+  }, [isLoading, isAuthenticated, router]);
 
-    if (user) {
+  // Effect 2: Reset loading state on mount to ensure fresh data fetch
+  useEffect(() => {
+    setIsDataLoading(true);
+  }, []);
+
+  // Effect 3: Data Fetching
+  useEffect(() => {
+    if (user?.id && isDataLoading) {
       const fetchData = async () => {
         try {
           const [balanceData, walletsData] = await Promise.all([
@@ -39,12 +50,13 @@ export default function CabinetPage() {
 
       fetchData();
     }
-  }, [user, isAuthenticated, isLoading, router]);
+  }, [user?.id, isDataLoading]);
 
   if (isLoading || isDataLoading) {
     return (
-      <div className="min-h-screen pt-20 flex items-center justify-center bg-black">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+      <div className="min-h-screen pt-20 flex flex-col items-center justify-center bg-black">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+        <p className="mt-4 text-gray-400">Loading...</p>
       </div>
     );
   }
@@ -52,8 +64,15 @@ export default function CabinetPage() {
   if (!user) return null;
 
   return ( // Added mt-24 to offset fixed header
-    <div className="min-h-screen bg-black text-white pt-32 px-4 pb-20"> 
+    <div className="min-h-screen bg-black text-white pt-10 px-4 pb-20"> 
       <div className="max-w-4xl mx-auto space-y-8">
+        <Link 
+          href="/" 
+          className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors group"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          Back to Course
+        </Link>
         <div>
           <h1 className="text-3xl font-bold mb-2">My Cabinet</h1>
           <p className="text-gray-400">Manage your balance and deposits.</p>

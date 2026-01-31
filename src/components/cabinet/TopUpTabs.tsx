@@ -122,7 +122,7 @@ export const TopUpTabs: React.FC<TopUpTabsProps> = ({ wallets, onDepositSuccess 
                   {selectedWallet.wallet_address}
                 </div>
                 <div className="mt-3 text-xs text-yellow-500/80 bg-yellow-500/10 p-2 rounded border border-yellow-500/20">
-                  ⚠️ Send only <strong>{selectedWallet.cryptocurrency} ({selectedWallet.network})</strong> to this address.
+                  ⚠️ Send only <strong>USDT or USDC</strong> to this address.
                   Minimum deposit: {selectedWallet.min_deposit || 0}
                 </div>
               </div>

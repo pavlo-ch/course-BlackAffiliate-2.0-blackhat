@@ -27,19 +27,63 @@ export interface DepositTransaction {
   created_at: string;
 }
 
+// Helper to get session token robustly
+const getSessionToken = async (): Promise<string | null> => {
+  // 1. Try official client with short timeout
+  try {
+    const sessionPromise = supabase.auth.getSession();
+    const timeoutPromise = new Promise<{ data: { session: any } }>((_, reject) => 
+      // Short 2s timeout for happy path
+      setTimeout(() => reject(new Error('Timeout')), 2000)
+    );
+    
+    // We treat timeout as a sign to use fallback, not a hard error
+    const { data } = await Promise.race([sessionPromise, timeoutPromise]);
+    if (data?.session?.access_token) {
+      return data.session.access_token;
+    }
+  } catch (e) {
+    // Ignore error, proceed to fallback
+    // console.warn('Supabase client unresponsive, using fallback token retrieval');
+  }
+
+  // 2. Fallback: Direct LocalStorage Access
+  // This works even if the Supabase client WebSocket is dead/hanging
+  if (typeof window !== 'undefined') {
+    try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      if (!supabaseUrl) return null;
+      
+      // Extract project ID from URL (e.g. https://xyz.supabase.co -> xyz)
+      const projectId = supabaseUrl.match(/https:\/\/([^.]+)\./)?.[1];
+      if (!projectId) return null;
+
+      const key = `sb-${projectId}-auth-token`;
+      const item = localStorage.getItem(key);
+      if (item) {
+        const session = JSON.parse(item);
+        return session.access_token || null;
+      }
+    } catch (e) {
+      console.error('Manual token retrieval failed:', e);
+    }
+  }
+  return null;
+};
+
 export const getActiveWallets = async (): Promise<CryptoWallet[]> => {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const token = await getSessionToken();
     
-    if (!session?.access_token) {
-      console.warn('No active session for fetching wallets');
+    if (!token) {
+      console.warn('No active session token found for fetching wallets');
       return [];
     }
 
     const response = await fetch('/api/cabinet/wallets', {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${session.access_token}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       signal: AbortSignal.timeout(10000)
@@ -59,17 +103,17 @@ export const getActiveWallets = async (): Promise<CryptoWallet[]> => {
 
 export const getUserBalance = async (userId: string): Promise<UserBalance | null> => {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const token = await getSessionToken();
     
-    if (!session?.access_token) {
-      console.warn('No active session for fetching balance');
+    if (!token) {
+      console.warn('No active session token found for fetching balance');
       return null;
     }
 
     const response = await fetch('/api/cabinet/balance', {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${session.access_token}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       signal: AbortSignal.timeout(10000)

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { User, Plus, Trash2, Mail, Shield, Calendar, ArrowLeft, Clock, Check, X, Bell, Edit3, Megaphone, Key, Loader2, Circle, DollarSign, ExternalLink, Wallet } from 'lucide-react';
+import { User, Plus, Trash2, Mail, Shield, Calendar, ArrowLeft, Clock, Check, X, Bell, Edit3, Megaphone, Key, Loader2, Circle, DollarSign, ExternalLink, Wallet, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { User as UserType, RegistrationRequest, ACCESS_LEVELS, AccessLevel } from '@/types/auth';
 import { AnnouncementWithReadStatus, CreateAnnouncementRequest } from '@/types/announcements';
@@ -23,90 +23,62 @@ interface Transaction {
   };
 }
 
-let cachedToken: string | null = null;
+// Removed global cachedToken to ensure freshness
 let tokenFetchPromise: Promise<string | null> | null = null;
 
 async function getAuthToken(): Promise<string | null> {
-  if (cachedToken) {
-    console.log('[TOKEN] Using cached token');
-    return cachedToken;
-  }
-
   if (tokenFetchPromise) {
-    console.log('[TOKEN] Waiting for ongoing token fetch');
     return tokenFetchPromise;
   }
 
   tokenFetchPromise = (async () => {
     try {
-      if (typeof window === 'undefined') {
-        return null;
+      if (typeof window === 'undefined') return null;
+
+      // 1. Try getSession first (Priority: Freshness)
+      // This handles token refresh automatically
+      try {
+        console.log('[TOKEN] Trying getSession with timeout...');
+        const sessionResult = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise<{ data: { session: null } }>((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), 2000)
+          )
+        ]) as { data: { session: any } };
+
+        if (sessionResult.data?.session?.access_token) {
+          console.log('[TOKEN] Got fresh token from getSession');
+          return sessionResult.data.session.access_token;
+        }
+      } catch (e) {
+        console.warn('[TOKEN] getSession failed or timed out, trying fallbacks');
       }
 
-      console.log('[TOKEN] Trying localStorage...');
+      // 2. Fallback: LocalStorage (Priority: Resilience)
+      console.log('[TOKEN] Trying localStorage fallback...');
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
       if (supabaseUrl && typeof localStorage !== 'undefined') {
         try {
-          const storageKey = `sb-${new URL(supabaseUrl).hostname.split('.')[0]}-auth-token`;
-          const stored = localStorage.getItem(storageKey);
-          
-          if (stored) {
-            try {
+          const projectId = supabaseUrl.match(/https:\/\/([^.]+)\./)?.[1];
+          if (projectId) {
+            const storageKey = `sb-${projectId}-auth-token`;
+            const stored = localStorage.getItem(storageKey);
+            
+            if (stored) {
               const parsed = JSON.parse(stored);
               const token = parsed.access_token;
-              if (token && typeof token === 'string') {
+              if (token) {
                 console.log('[TOKEN] Found token in localStorage');
-                cachedToken = token;
                 return token;
               }
-            } catch (e) {
-              console.log('[TOKEN] localStorage parse failed');
             }
           }
         } catch (e) {
           console.log('[TOKEN] localStorage access failed');
         }
       }
-
-      console.log('[TOKEN] Trying cookies...');
-      if (typeof document !== 'undefined') {
-        try {
-          const cookies = document.cookie.split(';');
-          const authCookie = cookies.find(c => c.trim().startsWith('sb-') && c.includes('auth-token'));
-          
-          if (authCookie) {
-            try {
-              const cookieValue = authCookie.split('=')[1];
-              const decoded = JSON.parse(decodeURIComponent(cookieValue));
-              const token = decoded.access_token || decoded;
-              if (token && typeof token === 'string') {
-                console.log('[TOKEN] Found token in cookies');
-                cachedToken = token;
-                return token;
-              }
-            } catch (e) {
-              console.log('[TOKEN] Cookie parse failed');
-            }
-          }
-        } catch (e) {
-          console.log('[TOKEN] Cookie access failed');
-        }
-      }
-
-      console.log('[TOKEN] Trying getSession with timeout...');
-      const result = await Promise.race([
-        supabase.auth.getSession(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000))
-      ]) as any;
       
-      const token = result?.data?.session?.access_token || null;
-      if (token) {
-        console.log('[TOKEN] Got token from getSession');
-        cachedToken = token;
-      } else {
-        console.log('[TOKEN] No token from getSession');
-      }
-      return token;
+      return null;
     } catch (error) {
       console.error('[TOKEN] Error getting token:', error);
       return null;
@@ -164,6 +136,11 @@ export default function AdminPanel() {
   const [balanceAmount, setBalanceAmount] = useState('');
   const [balanceType, setBalanceType] = useState<'add' | 'set'>('add');
   const [isUpdatingBalance, setIsUpdatingBalance] = useState(false);
+
+  // Payment Reminder (Single per user)
+  const [editingReminder, setEditingReminder] = useState<string | null>(null);
+  const [reminderText, setReminderText] = useState('');
+  const [isUpdatingReminder, setIsUpdatingReminder] = useState(false);
 
   const loadUsers = useCallback(async () => {
     setIsLoadingUsers(true);
@@ -473,6 +450,78 @@ export default function AdminPanel() {
       console.error('Error adjusting balance:', error);
     } finally {
       setIsUpdatingBalance(false);
+    }
+  };
+
+  const handleUpdateReminder = async (userId: string) => {
+    if (!reminderText.trim()) {
+      alert('Reminder text is required');
+      return;
+    }
+    
+    setIsUpdatingReminder(true);
+    try {
+      const token = await getAuthToken();
+      if (!token) {
+        alert('Auth error');
+        return;
+      }
+
+      const response = await fetch('/api/admin/payment-reminder', {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ userId, payment_reminder: reminderText }),
+      });
+      
+      const data = await response.json();
+      if (response.ok && data.success) {
+        alert('Reminder updated');
+        setEditingReminder(null);
+        setReminderText('');
+        loadUsers(); // Refresh to show updated reminder
+      } else {
+        alert(data.message || 'Error updating reminder');
+      }
+    } catch (error) {
+      console.error('Error updating reminder:', error);
+      alert('Network error');
+    } finally {
+      setIsUpdatingReminder(false);
+    }
+  };
+
+  const handleDeleteReminder = async (userId: string) => {
+    if (!confirm('Clear payment reminder for this user?')) return;
+    
+    setIsUpdatingReminder(true);
+    try {
+      const token = await getAuthToken();
+      if (!token) return;
+
+      const response = await fetch('/api/admin/payment-reminder', {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ userId, payment_reminder: null }),
+      });
+      
+      const data = await response.json();
+      if (response.ok && data.success) {
+        alert('Reminder cleared');
+        loadUsers(); // Refresh
+      } else {
+        alert(data.message || 'Error clearing reminder');
+      }
+    } catch (error) {
+      console.error('Error clearing reminder:', error);
+      alert('Network error');
+    } finally {
+      setIsUpdatingReminder(false);
     }
   };
 
@@ -1025,6 +1074,88 @@ export default function AdminPanel() {
                       <Trash2 className="w-4 h-4" />
                       <span className="md:hidden">Delete</span>
                     </button>
+                  </div>
+                  {/* Payment Reminder Section */}
+                  <div className="mt-3 p-3 bg-yellow-900/20 rounded-lg border border-yellow-600/30">
+                    {userItem.payment_reminder && editingReminder !== userItem.id ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="text-yellow-400 text-xs font-medium flex items-center gap-1">
+                            <Bell className="w-3 h-3" />
+                            Active Payment Reminder
+                          </div>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => {
+                                setEditingReminder(userItem.id);
+                                setReminderText(userItem.payment_reminder || '');
+                              }}
+                              className="text-blue-400 hover:text-blue-300 p-1"
+                              title="Edit reminder"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteReminder(userItem.id)}
+                              className="text-red-400 hover:text-red-300 p-1"
+                              title="Clear reminder"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="text-white text-sm bg-black/20 p-2 rounded border border-yellow-600/20">
+                          {userItem.payment_reminder}
+                        </div>
+                      </div>
+                    ) : editingReminder === userItem.id ? (
+                      <div className="space-y-2">
+                        <div className="text-yellow-400 text-xs font-medium">
+                          {userItem.payment_reminder ? 'Edit' : 'Set'} Payment Reminder
+                        </div>
+                        <textarea
+                          value={reminderText}
+                          onChange={(e) => setReminderText(e.target.value)}
+                          placeholder="Reminder text (shown as running line in user cabinet)..."
+                          rows={2}
+                          className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 resize-none"
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            onClick={() => {
+                              setEditingReminder(null);
+                              setReminderText('');
+                            }}
+                            className="bg-gray-600 hover:bg-gray-500 px-3 py-1 rounded text-sm transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => handleUpdateReminder(userItem.id)}
+                            disabled={isUpdatingReminder || !reminderText.trim()}
+                            className="bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
+                          >
+                            {isUpdatingReminder ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Check className="w-3 h-3" />
+                            )}
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setEditingReminder(userItem.id);
+                          setReminderText('');
+                        }}
+                        className="text-yellow-400 hover:text-yellow-300 text-sm flex items-center gap-1 w-full justify-center py-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Set Payment Reminder
+                      </button>
+                    )}
                   </div>
                   
                   {/* Форма регулювання балансу */}

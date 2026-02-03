@@ -7,7 +7,7 @@ import { TopUpTabs } from '@/components/cabinet/TopUpTabs';
 import { getUserBalance, getActiveWallets, UserBalance, CryptoWallet } from '@/lib/cabinet';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, RefreshCw } from 'lucide-react';
 
 export default function CabinetPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -116,9 +116,12 @@ export default function CabinetPage() {
 
   if (!user) return null;
 
-  return ( // Added mt-24 to offset fixed header
-    <div className="min-h-screen bg-black text-white pt-10 px-4 pb-20"> 
-      <div className="max-w-4xl mx-auto space-y-8">
+  return ( 
+    <div className="min-h-screen bg-black text-white pt-10 px-4 pb-20">
+      {/* Payment Reminder Ticker */}
+
+
+      <div className={`max-w-4xl mx-auto space-y-8 mt-12`}>
         <div className="flex justify-between items-start">
           <Link 
             href="/" 
@@ -128,30 +131,34 @@ export default function CabinetPage() {
             Back to Course
           </Link>
           
-          <button 
-            onClick={handleRefresh}
-            disabled={isFetching}
-            className={`p-2 rounded-full hover:bg-gray-800 transition-colors ${isFetching ? 'opacity-50 cursor-not-allowed' : ''}`}
-            title="Refresh data"
-          >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="20" 
-              height="20" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              className={isFetching ? "animate-spin" : ""}
+          <div className="flex items-center gap-4">
+             {/* Bell removed - Payment Reminder Ticker used instead */}
+
+            <button 
+              onClick={handleRefresh}
+              disabled={isFetching}
+              className={`p-2 rounded-full hover:bg-gray-800 transition-colors ${isFetching ? 'opacity-50 cursor-not-allowed' : ''}`}
+              title="Refresh data"
             >
-              <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-              <path d="M3 3v5h5" />
-              <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-              <path d="M16 21v-5h5" />
-            </svg>
-          </button>
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="20" 
+                height="20" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className={isFetching ? "animate-spin" : ""}
+              >
+                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+                <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                <path d="M16 21v-5h5" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div>

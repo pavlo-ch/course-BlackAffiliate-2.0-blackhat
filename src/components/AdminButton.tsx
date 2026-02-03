@@ -16,8 +16,8 @@ export default function AdminButton() {
 
   return (
     <>
-      {/* Cabinet Button - visible for all authenticated users */}
-      {isAuthenticated && (
+      {/* Cabinet Button - visible only for admins */}
+      {isAdmin() && (
         <Link
           href="/cabinet"
           className="fixed left-20 bottom-4 z-[100] flex items-center justify-center w-12 h-12 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white rounded-full shadow-lg transform hover:scale-110 transition-all duration-300 ease-out"

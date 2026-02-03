@@ -3,6 +3,7 @@ import './globals.css'
 import { ClientAuthProvider } from '@/components/ClientAuthProvider'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import AdminButton from '@/components/AdminButton'
+import { PaymentTicker } from '@/components/PaymentTicker'
 
 const geologica = {
   className: 'font-geologica'
@@ -29,6 +30,7 @@ export default function RootLayout({
       <body className={`${geologica.className} bg-background text-foreground`} suppressHydrationWarning>
         <ErrorBoundary>
           <ClientAuthProvider>
+            <PaymentTicker />
             {children}
             <AdminButton />
           </ClientAuthProvider>

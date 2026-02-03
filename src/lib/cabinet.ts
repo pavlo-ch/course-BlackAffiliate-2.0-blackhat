@@ -131,6 +131,52 @@ export const getUserBalance = async (userId: string): Promise<UserBalance | null
   }
 };
 
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export const getUserNotifications = async (): Promise<Notification[]> => {
+  try {
+    const token = await getSessionToken();
+    if (!token) return [];
+
+    const response = await fetch('/api/cabinet/notifications', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const data = await response.json();
+    return data.notifications || [];
+  } catch (error) {
+    console.error('Failed to get notifications:', error);
+    return [];
+  }
+};
+
+export const markNotificationRead = async (id: string): Promise<boolean> => {
+  try {
+    const token = await getSessionToken();
+    if (!token) return false;
+
+    const response = await fetch('/api/cabinet/notifications', {
+      method: 'PUT',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ id })
+    });
+    
+    return response.ok;
+  } catch (error) {
+    console.error('Failed to mark read:', error);
+    return false;
+  }
+};
+
 export const createDepositRequest = async (
   userId: string,
   amount: number,

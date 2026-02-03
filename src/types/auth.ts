@@ -10,6 +10,7 @@ export interface User {
   isApproved: boolean;
   last_seen?: string;
   is_active?: boolean;
+  payment_reminder?: string | null;
 }
 
 export interface LoginCredentials {

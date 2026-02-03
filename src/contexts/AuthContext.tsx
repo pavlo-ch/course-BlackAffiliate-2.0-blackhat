@@ -303,7 +303,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const profileResult = await Promise.race([
             supabase
           .from('profiles')
-          .select('id, name, role, created_at, is_approved, access_level')
+          .select('id, name, role, created_at, is_approved, access_level, payment_reminder')
           .eq('id', session.user.id)
               .single(),
             new Promise<{ data: null, error: { message: string } }>((_, reject) => 
@@ -334,6 +334,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             created_at: profile.created_at,
             lastLogin: new Date(),
             isApproved: true,
+            payment_reminder: profile.payment_reminder,
           };
           setUser(userObj);
           // Транслюємо стан іншим вкладкам
@@ -442,7 +443,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (session?.user) {
                 const { data: profile, error: profileError } = await supabase
               .from('profiles')
-              .select('id, name, role, created_at, is_approved, access_level')
+              .select('id, name, role, created_at, is_approved, access_level, payment_reminder')
               .eq('id', session.user.id)
               .single();
 
@@ -477,6 +478,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 created_at: profile.created_at,
                 lastLogin: new Date(),
                 isApproved: true,
+                payment_reminder: profile.payment_reminder,
               };
                   if (isMounted) {
               setUser(userObj);
@@ -676,7 +678,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('id, name, role, created_at, is_approved, access_level')
+          .select('id, name, role, created_at, is_approved, access_level, payment_reminder')
           .eq('id', data.user.id)
           .single();
           

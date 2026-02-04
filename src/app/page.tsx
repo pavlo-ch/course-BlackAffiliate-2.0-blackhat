@@ -5,7 +5,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import AccessControl from '@/components/AccessControl';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
-import { ArrowRight, Play, FileText, HelpCircle, Map, Tag, Wrench, Settings, Calculator, Wallet } from 'lucide-react';
+import { ArrowRight, Play, FileText, HelpCircle, Map, Tag, Wrench, Settings, Calculator, Wallet, Gamepad2 } from 'lucide-react';
 import { courseData } from '@/data/courseData';
 import AnnouncementsButton from '@/components/AnnouncementsButton';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
@@ -241,6 +241,17 @@ export default function Home() {
                       </Link>
                     </AccessControl>
                   )}
+                  {/* Play demo - accessible to all */}
+                  <a 
+                    href="https://www.advantage-agency.co/top"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl hover:shadow-purple-500/25 transform hover:scale-105 transition-all duration-300 ease-out"
+                  >
+                    <Gamepad2 className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
+                    <span>Play demo</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
+                  </a>
                 </div>
               </div>
               

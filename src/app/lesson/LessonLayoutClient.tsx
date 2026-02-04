@@ -7,7 +7,7 @@ import AnnouncementsButton from '@/components/AnnouncementsButton';
 import AnnouncementsList from '@/components/AnnouncementsList';
 import { useAuth } from '@/contexts/AuthContext';
 import AccessControl from '@/components/AccessControl';
-import { Menu, X, Settings, LogOut, Home, Map, Tag, Wrench, Calculator } from 'lucide-react';
+import { Menu, X, Settings, LogOut, Home, Map, Tag, Wrench, Calculator, Gamepad2 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -308,6 +308,16 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
                     </Link>
                   </AccessControl>
                 )}
+                {/* Play demo - accessible to all */}
+                <a
+                  href="https://www.advantage-agency.co/top"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center gap-1 text-xs bg-purple-600 hover:bg-purple-700 px-2 py-2 rounded-lg transition-colors text-white font-medium"
+                >
+                  <Gamepad2 className="w-4 h-4" />
+                  <span className="text-center">Play demo</span>
+                </a>
               </div>
             </div>
             <div className="p-4 mt-auto">

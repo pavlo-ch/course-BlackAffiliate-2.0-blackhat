@@ -58,7 +58,7 @@ export default function AccessRestrictionModal({ isOpen, onClose }: AccessRestri
           </div>
 
           <a
-            href="https://t.me/Mar_ko_y"
+            href="https://t.me/nayborovskiy"
             target="_blank"
             rel="noopener noreferrer"
             className="block w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-4 px-6 rounded-lg transition-all duration-200 text-center"

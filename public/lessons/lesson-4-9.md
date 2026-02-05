@@ -60,3 +60,33 @@ If your creative still gets rejected during moderation, try generating the main 
 
 The moderation system sees multiple "white creatives" across different languages, while your "black creative" is hidden among them. This disperses the moderation focus and increases approval chances.
 
+## Creative Example
+
+Below is an example of a "black" creative that can be used with this method. This creative is designed to bypass moderation by being part of a multilingual ad campaign.
+
+<div class="my-8 max-w-md mx-auto text-center">
+  <div class="aspect-video bg-[#0f1012] rounded-lg border border-gray-800 overflow-hidden mb-4">
+    <video 
+      class="w-full h-full object-cover not-prose"
+      controls
+      preload="metadata"
+    >
+      <source src="/img/4.9/video.mp4" type="video/mp4" />
+      Your browser does not support the video tag.
+    </video>
+  </div>
+  
+  <div class="flex justify-center">
+    <a 
+      href="/img/4.9/video.mp4" 
+      download="creative-example.mp4"
+      class="flex items-center space-x-2 bg-primary hover:bg-primary/80 text-white px-6 py-2 rounded-lg transition-colors font-medium no-underline"
+    >
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+      </svg>
+      <span>Download Creative Example</span>
+    </a>
+  </div>
+</div>
+

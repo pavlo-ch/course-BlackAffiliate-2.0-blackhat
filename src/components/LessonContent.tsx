@@ -355,9 +355,15 @@ export default function LessonContent({ lesson, onPreviousLesson, onNextLesson, 
                     pre: ({node, ...props}) => (
                       <pre className="bg-gray-900 rounded-lg p-4 overflow-x-auto mb-4" {...props} />
                     ),
-                    a: ({node, ...props}: any) => (
-                      <a className="text-primary hover:text-primary/80 underline" {...props} />
-                    ),
+                    a: ({node, ...props}: any) => {
+                      const hasNoUnderline = props.className?.includes('no-underline');
+                      return (
+                        <a 
+                          {...props} 
+                          className={`text-primary hover:text-primary/80 ${hasNoUnderline ? '' : 'underline'} ${props.className || ''}`} 
+                        />
+                      );
+                    },
                     table: ({node, ...props}) => (
                       <div className="my-6 overflow-x-auto" style={{maxWidth: '100vw', marginLeft: '-2rem', marginRight: '-2rem', paddingLeft: '2rem', paddingRight: '2rem'}}>
                         <table className="border-collapse border border-gray-600 text-xs" style={{minWidth: '600px', width: '100%'}} {...props} />
@@ -377,6 +383,12 @@ export default function LessonContent({ lesson, onPreviousLesson, onNextLesson, 
                     ),
                     td: ({node, ...props}) => (
                       <td className="border border-gray-600 px-1 py-1 text-gray-300 text-xs" style={{minWidth: '120px', maxWidth: '150px'}} {...props} />
+                    ),
+                    video: ({node, ...props}: any) => (
+                      <video 
+                        {...props} 
+                        className={`${props.className || props.class || ''} not-prose`.trim()} 
+                      />
                     ),
                   }}
                 >

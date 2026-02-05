@@ -60,9 +60,11 @@ If your creative still gets rejected during moderation, try generating the main 
 
 The moderation system sees multiple "white creatives" across different languages, while your "black creative" is hidden among them. This disperses the moderation focus and increases approval chances.
 
-## Creative Example
+## Bonus: Getting a video creative approved without using the language setting
 
-Below is an example of a "black" creative that can be used with this method. This creative is designed to bypass moderation by being part of a multilingual ad campaign.
+Create a “black” video creative up to 1 minute long and combine it with a “white” image so the total duration is 5 minutes.
+
+Example:
 
 <div class="my-8 max-w-md mx-auto text-center">
   <div class="aspect-video bg-[#0f1012] rounded-lg border border-gray-800 overflow-hidden mb-4">

@@ -39,17 +39,3 @@ coverage
 .temp
 .codegpt
 
-# Video files
-/public/video/
-*.mp4
-*.avi
-*.mov
-*.wmv
-*.flv
-*.webm
-*.mkv
-
-
-# Original lessons directories with invalid filename characters
-/public/lessons/original/
-/src/data/lessons/original/

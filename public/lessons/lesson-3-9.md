@@ -88,6 +88,6 @@ Testing is your treasure map—follow the clicks, adjust, and watch your convers
 Download ready-to-use prelanding page templates for different verticals:
 
 - [🏥 Pre-landing page for Nutra](https://drive.google.com/drive/folders/1AO5jBL_JO9dl3Iz441wnq2eq9yyGAl_2) - Health and wellness prelanding templates
-- [🎰 Pre-landing page for Gambling](https://drive.google.com/drive/folders/1V4_iNyHKD1PxpVwhxBzeEJx96HLGHfiM) - Casino and betting prelanding templates
+- [🎰 Pre-landing page for Gambling](https://drive.google.com/drive/folders/1s6ufQfKMXeoMtiBty-bYpz0uVE4tvpOb?usp=sharing) - Casino and betting prelanding templates
 
 These templates include various designs, copy variations, and interactive elements that you can customize for your campaigns. Use them as inspiration or starting points for your own prelanding pages.

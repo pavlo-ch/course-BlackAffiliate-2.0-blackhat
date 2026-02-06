@@ -293,5 +293,21 @@ export const toolsData: Tool[] = [
     category: 'Creative Agencies',
     website: 'https://t.me/creotivs',
     languages: ['English']
+  },
+  {
+    id: '35',
+    name: 'Pre-landing Templates (Gambling)',
+    type: 'creative_agencies',
+    category: 'Pre-landing Templates',
+    website: 'https://drive.google.com/drive/folders/1s6ufQfKMXeoMtiBty-bYpz0uVE4tvpOb?usp=sharing',
+    languages: ['English']
+  },
+  {
+    id: '36',
+    name: 'Pre-landing Templates (Nutra)',
+    type: 'creative_agencies',
+    category: 'Pre-landing Templates',
+    website: 'https://drive.google.com/drive/folders/1AO5jBL_JO9dl3Iz441wnq2eq9yyGAl_2',
+    languages: ['English']
   }
 ];

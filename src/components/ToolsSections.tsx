@@ -182,6 +182,14 @@ export default function ToolsSections({ tools }: ToolsSectionsProps) {
       proTip: 'Sources: https://t.me/creotivs — grab ready-to-go creative assets',
       type: 'creative_agencies',
       tools: tools.filter(s => s.type === 'creative_agencies' as ToolType)
+    },
+    {
+      id: 'prelanding_templates',
+      title: 'Pre-landing Templates',
+      description: 'Ready-to-use pre-landing page templates for both Nutra and Gambling verticals. Includes various designs and interactive elements.',
+      proTip: 'These templates are ready to be uploaded to your hosting. For Nutra, make sure to adjust the local language and currencies.',
+      type: 'creative_agencies',
+      tools: tools.filter(s => s.category === 'Pre-landing Templates')
     }
   ];
 
@@ -260,14 +268,17 @@ export default function ToolsSections({ tools }: ToolsSectionsProps) {
                                 {tool.website}
                               </a>
                             ) : (
-                              <a 
+                            <a 
                                 href={tool.website} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
                                 className="text-green-500 hover:text-green-400 text-xs"
                                 onClick={(e) => e.stopPropagation()}
+                                download={tool.website.startsWith('/')}
                               >
-                                {tool.website}
+                                {tool.website.startsWith('/') ? 'Download File' : 
+                                 tool.website.includes('drive.google.com') ? 'Google Drive Folder' : 
+                                 tool.website}
                               </a>
                             )}
                           </div>

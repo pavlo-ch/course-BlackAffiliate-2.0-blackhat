@@ -4,7 +4,7 @@ export interface User {
   password: string;
   name: string;
   role: 'admin' | 'user';
-  access_level: 1 | 2 | 3 | 4 | 5 | 6;
+  access_level: 1 | 2 | 3 | 4 | 5 | 6 | 7;
   created_at: string;
   lastLogin?: Date;
   isApproved: boolean;
@@ -40,7 +40,7 @@ export interface AuthState {
   isLoading: boolean;
 }
 
-export type AccessLevel = 1 | 2 | 3 | 4 | 5 | 6;
+export type AccessLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export interface AccessLevelInfo {
   level: AccessLevel;
@@ -71,6 +71,10 @@ export const ACCESS_LEVELS: Record<AccessLevel, AccessLevelInfo> = {
   6: {
     level: 6,
     name: 'Creative Push Only'
+  },
+  7: {
+    level: 7,
+    name: 'Payment Overdue'
   }
 };
 

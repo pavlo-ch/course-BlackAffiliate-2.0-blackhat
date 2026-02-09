@@ -18,6 +18,9 @@ export default function ProtectedRoute({ children, requireAdmin = false }: Prote
     if (!isAuthenticated && typeof window !== 'undefined' && user && user.access_level === 5) {
       window.location.href = '/service-unavailable';
     }
+    if (isAuthenticated && typeof window !== 'undefined' && user && user.access_level === 7) {
+      window.location.href = '/payment-overdue';
+    }
   }, [isAuthenticated, user]);
 
   if (isInitializing) {
@@ -32,7 +35,7 @@ export default function ProtectedRoute({ children, requireAdmin = false }: Prote
   }
 
   if (!isAuthenticated) {
-    if (user && user.access_level === 5) {
+    if (user && (user.access_level === 5 || user.access_level === 7)) {
       return null;
     }
     if (showRegister) {

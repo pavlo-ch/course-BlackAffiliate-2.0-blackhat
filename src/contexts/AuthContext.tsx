@@ -303,7 +303,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const profileResult = await Promise.race([
             supabase
           .from('profiles')
-          .select('id, name, role, created_at, is_approved, access_level, payment_reminder')
+          .select('id, name, role, created_at, is_approved, access_level, payment_reminder, overdue_message')
           .eq('id', session.user.id)
               .single(),
             new Promise<{ data: null, error: { message: string } }>((_, reject) => 
@@ -335,6 +335,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             lastLogin: new Date(),
             isApproved: true,
             payment_reminder: profile.payment_reminder,
+            overdue_message: profile.overdue_message,
           };
           setUser(userObj);
           // Транслюємо стан іншим вкладкам
@@ -443,7 +444,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (session?.user) {
                 const { data: profile, error: profileError } = await supabase
               .from('profiles')
-              .select('id, name, role, created_at, is_approved, access_level, payment_reminder')
+              .select('id, name, role, created_at, is_approved, access_level, payment_reminder, overdue_message')
               .eq('id', session.user.id)
               .single();
 
@@ -479,6 +480,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 lastLogin: new Date(),
                 isApproved: true,
                 payment_reminder: profile.payment_reminder,
+                overdue_message: profile.overdue_message,
               };
                   if (isMounted) {
               setUser(userObj);
@@ -678,7 +680,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('id, name, role, created_at, is_approved, access_level, payment_reminder')
+          .select('id, name, role, created_at, is_approved, access_level, payment_reminder, overdue_message')
           .eq('id', data.user.id)
           .single();
           
@@ -706,6 +708,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             created_at: profile.created_at,
             lastLogin: new Date(),
             isApproved: true,
+            payment_reminder: profile.payment_reminder,
+            overdue_message: profile.overdue_message,
           };
           setUser(userObj);
           // Транслюємо стан іншим вкладкам
@@ -814,8 +818,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false;
       }
       
-      const message = `🔔 New registration request\n\n👤 Name: ${credentials.name}\n📧 Email: ${credentials.email}\n🔑 Password: ${credentials.password}\n📅 Date: ${new Date().toLocaleDateString('en-US')}, ${new Date().toLocaleTimeString('en-US')}\n\n⏳ Awaiting administrator approval`;
-      await sendTelegramNotification(message);
+      // const message = `🔔 New registration request\n\n👤 Name: ${credentials.name}\n📧 Email: ${credentials.email}\n🔑 Password: ${credentials.password}\n📅 Date: ${new Date().toLocaleDateString('en-US')}, ${new Date().toLocaleTimeString('en-US')}\n\n⏳ Awaiting administrator approval`;
+      // await sendTelegramNotification(message);
       
       setIsLoading(false);
       return true;
@@ -920,8 +924,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       setRegistrationRequests(prev => prev.filter(r => r.id !== requestId));
       
-      const message = `❌ <b>Registration rejected</b>\n\n📧 Email: ${data.request.email}`;
-      await sendTelegramNotification(message);
+      // const message = `❌ <b>Registration rejected</b>\n\n📧 Email: ${data.request.email}`;
+      // await sendTelegramNotification(message);
       
       return true;
     } catch (error) {

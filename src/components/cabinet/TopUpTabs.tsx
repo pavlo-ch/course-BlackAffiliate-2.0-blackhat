@@ -39,8 +39,8 @@ export const TopUpTabs: React.FC<TopUpTabsProps> = ({ wallets, onDepositSuccess 
       );
 
       // Send TG Notification
-      const message = `<b>New Deposit Request</b>\n\n User: ${user.name} (${user.email})\n Amount: ${amount} USD\n Crypto: ${selectedWallet.cryptocurrency}\n Hash: <code>${txHash}</code>\n Date: ${new Date().toLocaleString()}`;
-      await sendTelegramNotification(message);
+      // const message = `<b>New Deposit Request</b>\n\n User: ${user.name} (${user.email})\n Amount: ${amount} USD\n Crypto: ${selectedWallet.cryptocurrency}\n Hash: <code>${txHash}</code>\n Date: ${new Date().toLocaleString()}`;
+      // await sendTelegramNotification(message);
 
       setStatus('success');
       setAmount('');

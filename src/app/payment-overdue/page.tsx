@@ -1,6 +1,19 @@
+'use client';
+
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
+import { useEffect, useState } from 'react';
 
 export default function PaymentOverdue() {
+  const { user } = useAuth();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  const overdueMessage = user?.overdue_message || "Your payment is overdue, please contact us on Telegram";
+
   return (
     <div className="min-h-screen bg-[#0f1012] flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-[#1a1b1e] rounded-xl p-8 border border-red-900/30 shadow-2xl">
@@ -25,8 +38,8 @@ export default function PaymentOverdue() {
             Payment Overdue
           </h1>
           
-          <p className="text-gray-400 text-lg leading-relaxed">
-            Your payment is overdue, please contact us on Telegram
+          <p className="text-gray-400 text-lg leading-relaxed whitespace-pre-wrap">
+            {isClient ? overdueMessage : "Your payment is overdue, please contact us on Telegram"}
           </p>
 
           <Link

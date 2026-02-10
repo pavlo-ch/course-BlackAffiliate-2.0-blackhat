@@ -23,6 +23,13 @@ interface Transaction {
   };
 }
 
+interface BlacklistedEmail {
+  email: string;
+  reason: string | null;
+  request_from: string | null;
+  created_at: string;
+}
+
 // Removed global cachedToken to ensure freshness
 let tokenFetchPromise: Promise<string | null> | null = null;
 
@@ -95,7 +102,7 @@ export default function AdminPanel() {
   const [registrationRequests, setRegistrationRequests] = useState<RegistrationRequest[]>([]);
   const [users, setUsers] = useState<UserType[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [activeTab, setActiveTab] = useState<'users' | 'requests' | 'announcements' | 'transactions'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'requests' | 'announcements' | 'transactions' | 'blacklist'>('users');
   const [newUser, setNewUser] = useState({
     email: '',
     password: '',
@@ -141,6 +148,18 @@ export default function AdminPanel() {
   const [editingReminder, setEditingReminder] = useState<string | null>(null);
   const [reminderText, setReminderText] = useState('');
   const [isUpdatingReminder, setIsUpdatingReminder] = useState(false);
+  
+  // Overdue Message (Custom for Payment Overdue screen)
+  const [editingOverdue, setEditingOverdue] = useState<string | null>(null);
+  const [overdueText, setOverdueText] = useState('');
+  const [isUpdatingOverdue, setIsUpdatingOverdue] = useState(false);
+  
+  // Blacklist
+  const [blacklist, setBlacklist] = useState<BlacklistedEmail[]>([]);
+  const [isLoadingBlacklist, setIsLoadingBlacklist] = useState(true);
+  const [newBlacklistEmail, setNewBlacklistEmail] = useState('');
+  const [newBlacklistReason, setNewBlacklistReason] = useState('');
+  const [isAddingToBlacklist, setIsAddingToBlacklist] = useState(false);
 
   const loadUsers = useCallback(async () => {
     setIsLoadingUsers(true);
@@ -252,11 +271,32 @@ export default function AdminPanel() {
     }
   }, []);
 
+  const loadBlacklist = useCallback(async () => {
+    setIsLoadingBlacklist(true);
+    try {
+      const token = await getAuthToken();
+      const response = await fetch('/api/admin/blacklist', {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setBlacklist(data.blacklist);
+      }
+    } catch (error) {
+      console.error('Error loading blacklist:', error);
+    } finally {
+      setIsLoadingBlacklist(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadRequests();
     loadUsers();
     loadAnnouncements();
     loadTransactions();
+    loadBlacklist();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -341,9 +381,46 @@ export default function AdminPanel() {
   };
 
   const handleRejectRequest = async (requestId: string) => {
+    if (!confirm('Are you sure you want to reject this request?')) return;
     const success = await rejectRegistration(requestId);
     if (success) {
       await loadRequests();
+    }
+  };
+
+  const handleBlockRequest = async (requestId: string, email: string) => {
+    if (!confirm(`Are you sure you want to block ${email} and reject their request?`)) return;
+    
+    try {
+      // 1. Add to Blacklist
+      const response = await fetch('/api/admin/blacklist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          email, 
+          reason: 'Blocked from requests list',
+          request_from: registrationRequests.find(r => r.id === requestId)?.name || 'Unknown'
+        }),
+      });
+      
+      const data = await response.json();
+      if (!data.success) {
+        alert(data.message || 'Error adding to blacklist');
+        return;
+      }
+
+      // 2. Reject Request
+      const success = await rejectRegistration(requestId);
+      if (success) {
+        await loadRequests();
+        await loadBlacklist();
+        alert(`${email} has been blacklisted and the request was rejected.`);
+      }
+    } catch (error) {
+      console.error('Error blocking request:', error);
+      alert('An error occurred while blocking the request.');
     }
   };
 
@@ -522,6 +599,121 @@ export default function AdminPanel() {
       alert('Network error');
     } finally {
       setIsUpdatingReminder(false);
+    }
+  };
+
+  const handleUpdateOverdue = async (userId: string) => {
+    setIsUpdatingOverdue(true);
+    try {
+      const token = await getAuthToken();
+      if (!token) {
+        alert('Auth error');
+        return;
+      }
+
+      const response = await fetch('/api/admin/overdue-message', {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ userId, overdue_message: overdueText }),
+      });
+      
+      const data = await response.json();
+      if (response.ok && data.success) {
+        alert('Overdue message updated');
+        setEditingOverdue(null);
+        setOverdueText('');
+        loadUsers();
+      } else {
+        alert(data.message || 'Error updating overdue message');
+      }
+    } catch (error) {
+      console.error('Error updating overdue message:', error);
+      alert('Network error');
+    } finally {
+      setIsUpdatingOverdue(false);
+    }
+  };
+
+  const handleAddToBlacklist = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBlacklistEmail) return;
+    
+    setIsAddingToBlacklist(true);
+    try {
+      const response = await fetch('/api/admin/blacklist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: newBlacklistEmail, reason: newBlacklistReason }),
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        setNewBlacklistEmail('');
+        setNewBlacklistReason('');
+        await loadBlacklist();
+      } else {
+        alert(data.message || 'Error adding to blacklist');
+      }
+    } catch (error) {
+      console.error('Error adding to blacklist:', error);
+    } finally {
+      setIsAddingToBlacklist(false);
+    }
+  };
+
+  const handleRemoveFromBlacklist = async (email: string) => {
+    if (!confirm(`Remove ${email} from blacklist?`)) return;
+    
+    try {
+      const response = await fetch(`/api/admin/blacklist?email=${encodeURIComponent(email)}`, {
+        method: 'DELETE',
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        await loadBlacklist();
+      } else {
+        alert(data.message || 'Error removing from blacklist');
+      }
+    } catch (error) {
+      console.error('Error removing from blacklist:', error);
+    }
+  };
+
+  const handleDeleteOverdue = async (userId: string) => {
+    if (!confirm('Clear overdue message for this user?')) return;
+    
+    setIsUpdatingOverdue(true);
+    try {
+      const token = await getAuthToken();
+      if (!token) return;
+
+      const response = await fetch('/api/admin/overdue-message', {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ userId, overdue_message: null }),
+      });
+      
+      const data = await response.json();
+      if (response.ok && data.success) {
+        alert('Overdue message cleared');
+        loadUsers();
+      } else {
+        alert(data.message || 'Error clearing overdue message');
+      }
+    } catch (error) {
+      console.error('Error clearing overdue message:', error);
+      alert('Network error');
+    } finally {
+      setIsUpdatingOverdue(false);
     }
   };
 
@@ -823,6 +1015,17 @@ export default function AdminPanel() {
                     {transactions.filter(t => t.status === 'pending').length}
                   </span>
                 )}
+              </button>
+              <button
+                onClick={() => setActiveTab('blacklist')}
+                className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                  activeTab === 'blacklist'
+                    ? 'bg-primary text-white'
+                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                <Shield className="w-4 h-4 text-red-500" />
+                Blacklist ({blacklist.length})
               </button>
             </div>
             {activeTab === 'users' && (
@@ -1159,6 +1362,89 @@ export default function AdminPanel() {
                       </button>
                     )}
                   </div>
+
+                  {/* Overdue Message Section */}
+                  <div className="mt-3 p-3 bg-red-900/20 rounded-lg border border-red-600/30">
+                    {userItem.overdue_message && editingOverdue !== userItem.id ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="text-red-400 text-xs font-medium flex items-center gap-1">
+                            <MessageSquare className="w-3 h-3" />
+                            Custom Overdue Message
+                          </div>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => {
+                                setEditingOverdue(userItem.id);
+                                setOverdueText(userItem.overdue_message || '');
+                              }}
+                              className="text-blue-400 hover:text-blue-300 p-1"
+                              title="Edit overdue message"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteOverdue(userItem.id)}
+                              className="text-red-400 hover:text-red-300 p-1"
+                              title="Clear overdue message"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="text-white text-sm bg-black/20 p-2 rounded border border-red-600/20 max-w-full overflow-hidden text-ellipsis">
+                          {userItem.overdue_message}
+                        </div>
+                      </div>
+                    ) : editingOverdue === userItem.id ? (
+                      <div className="space-y-2">
+                        <div className="text-red-400 text-xs font-medium">
+                          {userItem.overdue_message ? 'Edit' : 'Set'} Overdue Message
+                        </div>
+                        <textarea
+                          value={overdueText}
+                          onChange={(e) => setOverdueText(e.target.value)}
+                          placeholder="Custom message for overdue screen..."
+                          rows={2}
+                          className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            onClick={() => {
+                              setEditingOverdue(null);
+                              setOverdueText('');
+                            }}
+                            className="bg-gray-600 hover:bg-gray-500 px-3 py-1 rounded text-sm transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => handleUpdateOverdue(userItem.id)}
+                            disabled={isUpdatingOverdue || !overdueText.trim()}
+                            className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
+                          >
+                            {isUpdatingOverdue ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Check className="w-3 h-3" />
+                            )}
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setEditingOverdue(userItem.id);
+                          setOverdueText('');
+                        }}
+                        className="text-red-400 hover:text-red-300 text-sm flex items-center gap-1 w-full justify-center py-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Set Custom Overdue Message
+                      </button>
+                    )}
+                  </div>
                   
                   {/* Форма регулювання балансу */}
                   {adjustingBalance === userItem.id && (
@@ -1311,11 +1597,19 @@ export default function AdminPanel() {
                           </button>
                           <button
                             onClick={() => handleRejectRequest(request.id)}
-                            className="bg-red-600 hover:bg-red-700 p-2 rounded-lg transition-colors flex-1 flex items-center justify-center gap-2"
+                            className="bg-yellow-600 hover:bg-yellow-700 p-2 rounded-lg transition-colors flex-1 flex items-center justify-center gap-2"
                             title="Reject registration"
                           >
                             <X className="w-4 h-4" />
                             <span className="md:hidden">Reject</span>
+                          </button>
+                          <button
+                            onClick={() => handleBlockRequest(request.id, request.email)}
+                            className="bg-red-600 hover:bg-red-700 p-2 rounded-lg transition-colors flex-1 flex items-center justify-center gap-2"
+                            title="Block and Reject"
+                          >
+                            <Shield className="w-4 h-4" />
+                            <span className="md:hidden">Block</span>
                           </button>
                         </div>
                       </div>
@@ -1612,6 +1906,96 @@ export default function AdminPanel() {
                   </table>
                 </div>
               )}
+            </div>
+          )}
+          {activeTab === 'blacklist' && (
+            <div className="space-y-6">
+              <div className="bg-gray-800 rounded-lg p-6">
+                <h3 className="text-xl font-semibold mb-4 text-white">Add to Blacklist</h3>
+                <form onSubmit={handleAddToBlacklist} className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <input
+                      type="email"
+                      value={newBlacklistEmail}
+                      onChange={(e) => setNewBlacklistEmail(e.target.value)}
+                      placeholder="Email to block"
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                      required
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={newBlacklistReason}
+                      onChange={(e) => setNewBlacklistReason(e.target.value)}
+                      placeholder="Reason (optional)"
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isAddingToBlacklist || !newBlacklistEmail}
+                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isAddingToBlacklist ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Plus className="w-4 h-4" />
+                    )}
+                    Block Email
+                  </button>
+                </form>
+              </div>
+
+              <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
+                <h3 className="text-xl font-semibold p-6 pb-2 text-white">Blacklisted Emails</h3>
+                {isLoadingBlacklist ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                    <span className="ml-3 text-gray-400">Loading blacklist...</span>
+                  </div>
+                ) : blacklist.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Shield className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                    <p className="text-gray-400">Blacklist is empty</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="border-b border-gray-700 bg-black/40">
+                          <th className="py-3 px-6 text-sm font-medium text-gray-400 uppercase">Email</th>
+                          <th className="py-3 px-6 text-sm font-medium text-gray-400 uppercase">Request from</th>
+                          <th className="py-3 px-6 text-sm font-medium text-gray-400 uppercase">Reason</th>
+                          <th className="py-3 px-6 text-sm font-medium text-gray-400 uppercase">Blocked On</th>
+                          <th className="py-3 px-6 text-sm font-medium text-gray-400 uppercase text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-800">
+                        {blacklist.map((item) => (
+                          <tr key={item.email} className="hover:bg-white/[0.02] transition-colors">
+                            <td className="py-4 px-6 text-sm font-medium text-red-400">{item.email}</td>
+                            <td className="py-4 px-6 text-sm text-gray-300">{item.request_from || '—'}</td>
+                            <td className="py-4 px-6 text-sm text-gray-300 italic">{item.reason || '—'}</td>
+                            <td className="py-4 px-6 text-sm text-gray-500 text-xs">
+                              {new Date(item.created_at).toLocaleDateString()}
+                            </td>
+                            <td className="py-4 px-6 text-right">
+                              <button
+                                onClick={() => handleRemoveFromBlacklist(item.email)}
+                                className="text-gray-500 hover:text-white transition-colors p-2 hover:bg-red-600/20 rounded-lg"
+                                title="Remove from blacklist"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

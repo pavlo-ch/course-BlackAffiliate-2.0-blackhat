@@ -14,6 +14,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Valid access level (1-5) is required' }, { status: 400 });
     }
 
+    // 0. Check Blacklist safety
+    const { data: requestToApprove } = await supabaseAdmin
+      .from('registration_requests')
+      .select('email')
+      .eq('id', requestId)
+      .single();
+
+    if (requestToApprove) {
+      const { data: blacklisted } = await supabaseAdmin
+        .from('blacklist')
+        .select('email')
+        .eq('email', requestToApprove.email.toLowerCase())
+        .single();
+      
+      if (blacklisted) {
+        return NextResponse.json({ success: false, message: 'This email is blacklisted' }, { status: 403 });
+      }
+    }
+
     // 1. Fetch the registration request
     const { data: registrationRequest, error: requestError } = await supabaseAdmin
       .from('registration_requests')

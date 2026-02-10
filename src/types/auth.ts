@@ -11,6 +11,7 @@ export interface User {
   last_seen?: string;
   is_active?: boolean;
   payment_reminder?: string | null;
+  overdue_message?: string | null;
 }
 
 export interface LoginCredentials {

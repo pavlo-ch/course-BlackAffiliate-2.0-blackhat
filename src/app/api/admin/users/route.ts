@@ -5,7 +5,7 @@ export async function GET(request: NextRequest) {
   try {
     const { data: users, error } = await supabaseAdmin
       .from('profiles')
-      .select('id, email, name, role, created_at, access_level, last_seen, is_active, payment_reminder')
+      .select('id, email, name, role, created_at, access_level, last_seen, is_active, payment_reminder, overdue_message')
       .order('created_at', { ascending: false });
     
     if (users) {
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { id, access_level, role, password } = await request.json();
+    const { id, access_level, role, password, overdue_message } = await request.json();
     
     if (!id) {
       return NextResponse.json({ success: false, message: 'User ID not specified' }, { status: 400 });
@@ -122,10 +122,11 @@ export async function PUT(request: NextRequest) {
       }
     }
     
-    // Оновлення профілю (access_level, role)
+    // Оновлення профілю (access_level, role, overdue_message)
     const updateData: any = {};
     if (access_level !== undefined) updateData.access_level = access_level;
     if (role !== undefined) updateData.role = role;
+    if (overdue_message !== undefined) updateData.overdue_message = overdue_message;
     
     if (Object.keys(updateData).length > 0) {
     const { data: updatedProfile, error: profileError } = await supabaseAdmin

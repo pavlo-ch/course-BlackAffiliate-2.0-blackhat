@@ -61,11 +61,23 @@ export async function POST(request: NextRequest) {
   try {
     const { email, password, name } = await request.json();
     console.log('📝 API: Creating registration request for:', email);
+    const normalizedEmail = email.toLowerCase();
+    
+    // Check Blacklist
+    const { data: blacklisted } = await supabaseAdmin
+      .from('blacklist')
+      .select('email')
+      .eq('email', normalizedEmail)
+      .single();
+    
+    if (blacklisted) {
+      return NextResponse.json({ error: 'This email is blacklisted' }, { status: 403 });
+    }
     
     const { data: existingProfile } = await supabaseAdmin
       .from('profiles')
       .select('id')
-      .eq('email', email)
+      .eq('email', normalizedEmail)
       .single();
     
     if (existingProfile) {
@@ -76,7 +88,7 @@ export async function POST(request: NextRequest) {
     const { data: existingRequest } = await supabaseAdmin
       .from('registration_requests')
       .select('id')
-      .eq('email', email)
+      .eq('email', normalizedEmail)
       .single();
     
     if (existingRequest) {
@@ -86,7 +98,7 @@ export async function POST(request: NextRequest) {
     
     const { data: newRequest, error: insertError } = await supabaseAdmin
       .from('registration_requests')
-      .insert({ email, password, name })
+      .insert({ email: normalizedEmail, password, name })
       .select()
       .single();
     

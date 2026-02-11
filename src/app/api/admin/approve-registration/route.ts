@@ -10,8 +10,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Request ID is required' }, { status: 400 });
     }
 
-    if (!access_level || (access_level < 1 || access_level > 5)) {
-      return NextResponse.json({ success: false, message: 'Valid access level (1-5) is required' }, { status: 400 });
+    if (!access_level || (access_level < 1 || access_level > 7)) {
+      return NextResponse.json({ success: false, message: 'Valid access level (1-7) is required' }, { status: 400 });
     }
 
     // 0. Check Blacklist safety

@@ -12,6 +12,8 @@ export interface User {
   is_active?: boolean;
   payment_reminder?: string | null;
   overdue_message?: string | null;
+  expired_message?: string | null;
+  access_expires_at?: string | null;
 }
 
 export interface LoginCredentials {

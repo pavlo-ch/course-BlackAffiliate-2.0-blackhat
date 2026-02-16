@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
         is_approved: true,
         name: registrationRequest.name,
         access_level: access_level,
+        access_expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
       })
       .eq('id', userId);
 

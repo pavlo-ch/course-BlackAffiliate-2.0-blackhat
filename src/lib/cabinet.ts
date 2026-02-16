@@ -90,6 +90,10 @@ export const getActiveWallets = async (): Promise<CryptoWallet[]> => {
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        console.warn('Unauthorized access to wallets (401). Session likely expired.');
+        return [];
+      }
       throw new Error(`API error: ${response.status}`);
     }
 
@@ -120,6 +124,10 @@ export const getUserBalance = async (userId: string): Promise<UserBalance | null
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        console.warn('Unauthorized access to balance (401). Session likely expired.');
+        return null;
+      }
       throw new Error(`API error: ${response.status}`);
     }
 
@@ -182,27 +190,74 @@ export const createDepositRequest = async (
   amount: number,
   currency: string,
   cryptoAddress: string,
-  transactionHash: string
+  transactionHash: string,
+  walletCurrency?: string // Added specifically for the notification details
 ): Promise<DepositTransaction | null> => {
-  const { data, error } = await supabase
-    .from('deposit_transactions')
-    .insert([
-      {
-        user_id: userId,
+  try {
+    const token = await getSessionToken();
+    if (!token) throw new Error('No session token');
+
+    const response = await fetch('/api/cabinet/deposit', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
         amount,
         currency,
         crypto_address: cryptoAddress,
         transaction_hash: transactionHash,
-        status: 'pending',
-      }
-    ])
-    .select()
-    .single();
+        wallet_currency: walletCurrency
+      })
+    });
 
-  if (error) {
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to create deposit request');
+    }
+
+    return data.transaction;
+  } catch (error) {
     console.error('Error creating deposit request:', error);
     throw error;
   }
+};
 
-  return data;
+export interface TransactionHistoryItem {
+  id: string;
+  type: 'deposit' | 'purchase';
+  amount: number;
+  status: string;
+  created_at: string;
+  currency?: string;
+  service?: { title: string };
+  transaction_hash?: string;
+}
+
+export const getUserHistory = async (): Promise<TransactionHistoryItem[]> => {
+  try {
+    const token = await getSessionToken();
+    if (!token) return [];
+
+    const response = await fetch('/api/cabinet/history', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+       if (response.status === 401) {
+        console.warn('Unauthorized access to history (401). Session likely expired.');
+        return [];
+      }
+      throw new Error(data.message || 'Failed to fetch history');
+    }
+    
+    return data.history || [];
+  } catch (error) {
+    console.error('Failed to get user history:', error);
+    return [];
+  }
 };

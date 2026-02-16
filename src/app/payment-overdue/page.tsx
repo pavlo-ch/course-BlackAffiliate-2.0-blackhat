@@ -4,13 +4,22 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 
+import { useRouter } from 'next/navigation';
+
 export default function PaymentOverdue() {
   const { user } = useAuth();
+  const router = useRouter();
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    if (user && user.access_level !== 7 && user.role !== 'admin') {
+      router.push('/');
+    }
+  }, [user, router]);
 
   const overdueMessage = user?.overdue_message || "Your payment is overdue, please contact us on Telegram";
 

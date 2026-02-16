@@ -303,7 +303,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const profileResult = await Promise.race([
             supabase
           .from('profiles')
-          .select('id, name, role, created_at, is_approved, access_level, payment_reminder, overdue_message')
+          .select('id, name, role, created_at, is_approved, access_level, payment_reminder, overdue_message, expired_message, access_expires_at')
           .eq('id', session.user.id)
               .single(),
             new Promise<{ data: null, error: { message: string } }>((_, reject) => 
@@ -336,6 +336,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isApproved: true,
             payment_reminder: profile.payment_reminder,
             overdue_message: profile.overdue_message,
+            expired_message: profile.expired_message,
+            access_expires_at: profile.access_expires_at,
           };
           setUser(userObj);
           // Транслюємо стан іншим вкладкам
@@ -368,7 +370,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error: any) {
       console.error(`💥 AuthContext: Initialization attempt ${attempt} failed:`, error);
       
-      if (attempt < 3 && error?.message !== 'Session check timeout' && error?.message !== 'Profile check timeout') {
+      if (attempt < 3) {
         const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
         setLoadingStage(`Connection failed. Retrying in ${delay/1000}s...`);
         
@@ -444,7 +446,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (session?.user) {
                 const { data: profile, error: profileError } = await supabase
               .from('profiles')
-              .select('id, name, role, created_at, is_approved, access_level, payment_reminder, overdue_message')
+              .select('id, name, role, created_at, is_approved, access_level, payment_reminder, overdue_message, expired_message, access_expires_at')
               .eq('id', session.user.id)
               .single();
 
@@ -481,6 +483,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 isApproved: true,
                 payment_reminder: profile.payment_reminder,
                 overdue_message: profile.overdue_message,
+                expired_message: profile.expired_message,
+                access_expires_at: profile.access_expires_at,
               };
                   if (isMounted) {
               setUser(userObj);
@@ -680,7 +684,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('id, name, role, created_at, is_approved, access_level, payment_reminder, overdue_message')
+          .select('id, name, role, created_at, is_approved, access_level, payment_reminder, overdue_message, expired_message, access_expires_at')
           .eq('id', data.user.id)
           .single();
           
@@ -710,6 +714,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isApproved: true,
             payment_reminder: profile.payment_reminder,
             overdue_message: profile.overdue_message,
+            expired_message: profile.expired_message,
+            access_expires_at: profile.access_expires_at,
           };
           setUser(userObj);
           // Транслюємо стан іншим вкладкам

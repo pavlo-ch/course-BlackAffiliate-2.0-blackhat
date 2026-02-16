@@ -1,0 +1,63 @@
+-- Add access_expires_at to profiles
+ALTER TABLE public.profiles ADD COLUMN access_expires_at TIMESTAMP WITH TIME ZONE;
+
+-- Create shop_services table
+CREATE TABLE public.shop_services (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title TEXT NOT NULL,
+    description TEXT,
+    price NUMERIC NOT NULL CHECK (price >= 0),
+    image_url TEXT,
+    type TEXT NOT NULL DEFAULT 'other', -- 'subscription', 'other'
+    duration_days INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Enable RLS for shop_services
+ALTER TABLE public.shop_services ENABLE ROW LEVEL SECURITY;
+
+-- Allow everyone to read active services
+CREATE POLICY "Allow public read access to active services" ON public.shop_services FOR SELECT USING (is_active = true);
+
+-- Allow authenticated users to insert (admin only technically, but for now strict RLS)
+-- Actually, let's keep it simple: admin only write
+-- We'll rely on service role key for admin operations or check user role.
+-- For standard users: only READ.
+
+-- Create purchases table
+CREATE TABLE public.purchases (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    service_id UUID NOT NULL REFERENCES public.shop_services(id),
+    amount NUMERIC NOT NULL CHECK (amount >= 0),
+    status TEXT NOT NULL DEFAULT 'completed', -- 'completed', 'refunded'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Enable RLS for purchases
+ALTER TABLE public.purchases ENABLE ROW LEVEL SECURITY;
+
+-- Allow users to see their own purchases
+CREATE POLICY "Users can view own purchases" ON public.purchases FOR SELECT USING (auth.uid() = user_id);
+
+-- Update deposit_transactions check constraint to include 'rejected'
+-- First drop the constraint if it exists (by name, but we don't know the exact name Supabase generated unless we check).
+-- Assuming standard naming: deposit_transactions_status_check
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'deposit_transactions_status_check'
+    ) THEN
+        ALTER TABLE public.deposit_transactions DROP CONSTRAINT deposit_transactions_status_check;
+    END IF;
+END $$;
+
+ALTER TABLE public.deposit_transactions ADD CONSTRAINT deposit_transactions_status_check 
+    CHECK (status IN ('pending', 'confirmed', 'rejected', 'failed'));
+
+-- Add initial service (Subscription extension)
+INSERT INTO public.shop_services (title, description, price, image_url, type, duration_days, is_active)
+VALUES 
+('Subscription Extension (1 Month)', 'Extend your platform access for 30 days.', 49, '/img/shop/subscription-1m.jpg', 'subscription', 30, true),
+('Subscription Extension (6 Months)', 'Extend your platform access for 180 days with a discount.', 199, '/img/shop/subscription-6m.jpg', 'subscription', 180, true);

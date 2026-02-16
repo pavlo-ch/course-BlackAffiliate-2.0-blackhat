@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Fragment } from 'react';
 import Link from 'next/link';
-import { User, Plus, Trash2, Mail, Shield, Calendar, ArrowLeft, Clock, Check, X, Bell, Edit3, Megaphone, Key, Loader2, Circle, DollarSign, ExternalLink, Wallet, MessageSquare } from 'lucide-react';
+import { User, Plus, Trash2, Mail, Shield, Calendar, ArrowLeft, Clock, Check, X, Bell, Edit3, Megaphone, Key, Loader2, Circle, DollarSign, ExternalLink, Wallet, MessageSquare, ShoppingBag, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { User as UserType, RegistrationRequest, ACCESS_LEVELS, AccessLevel } from '@/types/auth';
 import { AnnouncementWithReadStatus, CreateAnnouncementRequest } from '@/types/announcements';
@@ -28,6 +28,29 @@ interface BlacklistedEmail {
   reason: string | null;
   request_from: string | null;
   created_at: string;
+}
+
+interface Service {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  image_url: string;
+  type: string;
+  duration_days: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface Purchase {
+  id: string;
+  user_id: string;
+  service_id: string;
+  amount: number;
+  status: string;
+  created_at: string;
+  user: { email: string; name: string | null };
+  service: { title: string };
 }
 
 // Removed global cachedToken to ensure freshness
@@ -102,7 +125,7 @@ export default function AdminPanel() {
   const [registrationRequests, setRegistrationRequests] = useState<RegistrationRequest[]>([]);
   const [users, setUsers] = useState<UserType[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [activeTab, setActiveTab] = useState<'users' | 'requests' | 'announcements' | 'transactions' | 'blacklist'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'requests' | 'announcements' | 'transactions' | 'blacklist' | 'services' | 'purchases'>('users');
   const [newUser, setNewUser] = useState({
     email: '',
     password: '',
@@ -153,6 +176,11 @@ export default function AdminPanel() {
   const [editingOverdue, setEditingOverdue] = useState<string | null>(null);
   const [overdueText, setOverdueText] = useState('');
   const [isUpdatingOverdue, setIsUpdatingOverdue] = useState(false);
+
+  // Expired Message (Custom for Access Expired screen)
+  const [editingExpired, setEditingExpired] = useState<string | null>(null);
+  const [expiredText, setExpiredText] = useState('');
+  const [isUpdatingExpired, setIsUpdatingExpired] = useState(false);
   
   // Blacklist
   const [blacklist, setBlacklist] = useState<BlacklistedEmail[]>([]);
@@ -160,6 +188,31 @@ export default function AdminPanel() {
   const [newBlacklistEmail, setNewBlacklistEmail] = useState('');
   const [newBlacklistReason, setNewBlacklistReason] = useState('');
   const [isAddingToBlacklist, setIsAddingToBlacklist] = useState(false);
+  
+  // Expiration date editing
+  const [editingExpiry, setEditingExpiry] = useState<string | null>(null);
+  const [expiryValue, setExpiryValue] = useState('');
+  const [isUpdatingExpiry, setIsUpdatingExpiry] = useState(false);
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
+
+  // Shop & Services
+  const [services, setServices] = useState<Service[]>([]);
+  const [isLoadingServices, setIsLoadingServices] = useState(true);
+  const [isEditingService, setIsEditingService] = useState<Service | null>(null);
+  const [showServiceForm, setShowServiceForm] = useState(false);
+  const [newService, setNewService] = useState<Partial<Service>>({ 
+    title: '', 
+    price: 0, 
+    type: 'subscription',
+    duration_days: 30,
+    is_active: true,
+    description: '',
+    image_url: ''
+  });
+
+  // Purchases
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [isLoadingPurchases, setIsLoadingPurchases] = useState(true);
 
   const loadUsers = useCallback(async () => {
     setIsLoadingUsers(true);
@@ -256,6 +309,74 @@ export default function AdminPanel() {
     }
   }, []);
 
+  const loadServices = useCallback(async () => {
+    setIsLoadingServices(true);
+    try {
+      const response = await fetch('/api/admin/services', { cache: 'no-store' });
+      const data = await response.json();
+      if (data.success) {
+        setServices(data.services);
+      }
+    } catch (error) {
+      console.error('Error loading services:', error);
+    } finally {
+      setIsLoadingServices(false);
+    }
+  }, []);
+
+  const loadPurchases = useCallback(async () => {
+    setIsLoadingPurchases(true);
+    try {
+      const response = await fetch('/api/admin/purchases', { cache: 'no-store' });
+      const data = await response.json();
+      if (data.success) {
+        setPurchases(data.purchases);
+      }
+    } catch (error) {
+      console.error('Error loading purchases:', error);
+    } finally {
+      setIsLoadingPurchases(false);
+    }
+  }, []);
+
+  const handleUpdateService = async (serviceData: Partial<Service>) => {
+    try {
+      const isNew = !serviceData.id;
+      const url = '/api/admin/services';
+      const method = isNew ? 'POST' : 'PUT';
+      
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(serviceData)
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        loadServices();
+        setShowServiceForm(false);
+        setNewService({ title: '', price: 0, type: 'subscription', duration_days: 30, is_active: true, description: '', image_url: '' });
+        setIsEditingService(null);
+      } else {
+        alert(data.message || 'Error saving service');
+      }
+    } catch (error) {
+      console.error('Error saving service:', error);
+    }
+  };
+
+  const handleDeleteService = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this service?')) return;
+    try {
+      const response = await fetch(`/api/admin/services?id=${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        loadServices();
+      }
+    } catch (error) {
+      console.error('Error deleting service:', error);
+    }
+  };
+
   const loadTransactions = useCallback(async () => {
     setIsLoadingTransactions(true);
     try {
@@ -299,6 +420,14 @@ export default function AdminPanel() {
     loadBlacklist();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'services') {
+      loadServices();
+    } else if (activeTab === 'purchases') {
+      loadPurchases();
+    }
+  }, [activeTab, loadServices, loadPurchases]);
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -483,6 +612,34 @@ export default function AdminPanel() {
     }
   };
 
+  const handleUpdateUserExpiry = async (userId: string, newExpiry: string | null) => {
+    setIsUpdatingExpiry(true);
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
+        },
+        body: JSON.stringify({ id: userId, access_expires_at: newExpiry }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        await loadUsers();
+        setEditingExpiry(null);
+      } else {
+        alert(data.message || 'Error updating expiration date');
+      }
+    } catch (error) {
+      console.error('Error updating expiration:', error);
+      alert('Error updating expiration date');
+    } finally {
+      setIsUpdatingExpiry(false);
+    }
+  };
+
   const handleUpdateTransaction = async (id: string, status: 'confirmed' | 'rejected') => {
     try {
       const response = await fetch('/api/admin/transactions', {
@@ -634,6 +791,76 @@ export default function AdminPanel() {
       alert('Network error');
     } finally {
       setIsUpdatingOverdue(false);
+    }
+  };
+
+  const handleUpdateExpired = async (userId: string) => {
+    setIsUpdatingExpired(true);
+    try {
+      const token = await getAuthToken();
+      if (!token) {
+        alert('Auth error');
+        return;
+      }
+
+      const response = await fetch('/api/admin/expired-message', {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ userId, expired_message: expiredText }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        alert('Expired message updated');
+        setEditingExpired(null);
+        setExpiredText('');
+        loadUsers();
+      } else {
+        alert(data.message || 'Error updating expired message');
+      }
+    } catch (error) {
+      console.error('Error updating expired message:', error);
+      alert('Network error');
+    } finally {
+      setIsUpdatingExpired(false);
+    }
+  };
+
+  const handleClearExpired = async (userId: string) => {
+    if (!confirm('Clear expired message for this user?')) return;
+    
+    setIsUpdatingExpired(true);
+    try {
+      const token = await getAuthToken();
+      if (!token) {
+        alert('Auth error');
+        return;
+      }
+
+      const response = await fetch('/api/admin/expired-message', {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ userId, expired_message: null }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        alert('Expired message cleared');
+        loadUsers();
+      } else {
+        alert(data.message || 'Error clearing expired message');
+      }
+    } catch (error) {
+      console.error('Error clearing expired message:', error);
+      alert('Network error');
+    } finally {
+      setIsUpdatingExpired(false);
     }
   };
 
@@ -1027,6 +1254,28 @@ export default function AdminPanel() {
                 <Shield className="w-4 h-4 text-red-500" />
                 Blacklist ({blacklist.length})
               </button>
+              <button
+                onClick={() => setActiveTab('services')}
+                className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                  activeTab === 'services'
+                    ? 'bg-primary text-white'
+                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                <ShoppingBag className="w-4 h-4" />
+                Services
+              </button>
+              <button
+                onClick={() => setActiveTab('purchases')}
+                className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                  activeTab === 'purchases'
+                    ? 'bg-primary text-white'
+                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                <DollarSign className="w-4 h-4" />
+                Purchases
+              </button>
             </div>
             {activeTab === 'users' && (
               <button
@@ -1147,391 +1396,360 @@ export default function AdminPanel() {
                   <User className="w-12 h-12 text-gray-500 mx-auto mb-4" />
                   <p className="text-gray-400">No users found</p>
                 </div>
-              ) : users.map((userItem) => (
-                <div key={userItem.id} className="bg-gray-800 rounded-lg p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                  <div className="flex items-start gap-4 w-full">
-                    <div className="bg-gray-700 p-3 rounded-lg mt-1">
-                      <User className="w-5 h-5" />
-                    </div>
-                    <div className="flex-grow">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Mail className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                        <span className="font-medium break-all">{userItem.email}</span>
-                        {userItem.role === 'admin' && (
-                          <div className="flex items-center gap-1 bg-primary/20 text-primary px-2 py-1 rounded text-xs">
-                            <Shield className="w-3 h-3" />
-                            Admin
-                          </div>
-                        )}
-                        {editingUser === userItem.id ? (
-                          <div className="flex items-center gap-2">
-                            <select
-                              value={userItem.access_level}
-                              onChange={(e) => handleUpdateUserAccess(userItem.id, parseInt(e.target.value) as AccessLevel)}
-                              className="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-xs text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                            >
-                              <option value={1}>Basic</option>
-                              <option value={2}>Premium</option>
-                              <option value={3}>VIP</option>
-                              <option value={4}>Without Buttons</option>
-                              <option value={5}>Blocked</option>
-                              <option value={6}>Creative Push Only</option>
-                              <option value={7}>Payment Overdue</option>
-                            </select>
-                            <button
-                              onClick={() => setEditingUser(null)}
-                              className="text-gray-400 hover:text-white"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1 bg-blue-600/20 text-blue-400 px-2 py-1 rounded text-xs">
-                            {ACCESS_LEVELS[userItem.access_level as AccessLevel]?.name || 'Unknown'}
-                            <button
-                              onClick={() => setEditingUser(userItem.id)}
-                              className="ml-1 hover:text-blue-300"
-                              title="Edit access level"
-                            >
-                              ✏️
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      {userItem.name && (
-                        <div className="text-sm text-gray-300 mt-1">
-                          <span className="font-medium">Name: {userItem.name}</span>
-                        </div>
-                      )}
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-gray-400 mt-2">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4" />
-                          <span>Created: {new Date(userItem.created_at).toLocaleDateString('en-US')}</span>
-                        </div>
-                        {userItem.last_seen ? (
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4" />
-                            <span>Last seen: {new Date(userItem.last_seen).toLocaleString('en-US', {
-                              timeZone: 'Europe/Warsaw',
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                              hour12: false
-                            })}</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-gray-500" />
-                            <span className="text-gray-500">Never</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                          <Circle className={`w-3 h-3 ${userItem.is_active ? 'text-green-500 fill-green-500' : 'text-gray-500 fill-gray-500'}`} />
-                          <span className={userItem.is_active ? 'text-green-400' : 'text-gray-500'}>
-                            {userItem.is_active ? 'Active' : 'Offline'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    {editingUser !== userItem.id && (
-                      <button
-                        onClick={() => setEditingUser(userItem.id)}
-                        className="bg-blue-600 hover:bg-blue-700 p-2 rounded-lg transition-colors flex items-center justify-center gap-2"
-                        title="Edit access level"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                        <span className="md:hidden">Edit</span>
-                      </button>
-                    )}
-                    <button
-                      onClick={() => {
-                        setAdjustingBalance(userItem.id);
-                        setBalanceAmount('');
-                        setBalanceType('add');
-                      }}
-                      className="bg-green-600 hover:bg-green-700 p-2 rounded-lg transition-colors flex items-center justify-center gap-2"
-                      title="Adjust balance"
-                    >
-                      <DollarSign className="w-4 h-4" />
-                      <span className="md:hidden">Balance</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setChangingPassword(userItem.id);
-                        setNewPassword('');
-                      }}
-                      className="bg-yellow-600 hover:bg-yellow-700 p-2 rounded-lg transition-colors flex items-center justify-center gap-2"
-                      title="Change password"
-                    >
-                      <Key className="w-4 h-4" />
-                      <span className="md:hidden">Password</span>
-                    </button>
-                    <button
-                      onClick={() => handleDeleteUser(userItem.id)}
-                      disabled={userItem.id === user?.id}
-                      className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed p-2 rounded-lg transition-colors flex items-center justify-center gap-2"
-                      title={userItem.id === user?.id ? 'You cannot delete your own account' : 'Delete user'}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      <span className="md:hidden">Delete</span>
-                    </button>
-                  </div>
-                  {/* Payment Reminder Section */}
-                  <div className="mt-3 p-3 bg-yellow-900/20 rounded-lg border border-yellow-600/30">
-                    {userItem.payment_reminder && editingReminder !== userItem.id ? (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="text-yellow-400 text-xs font-medium flex items-center gap-1">
-                            <Bell className="w-3 h-3" />
-                            Active Payment Reminder
-                          </div>
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => {
-                                setEditingReminder(userItem.id);
-                                setReminderText(userItem.payment_reminder || '');
-                              }}
-                              className="text-blue-400 hover:text-blue-300 p-1"
-                              title="Edit reminder"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteReminder(userItem.id)}
-                              className="text-red-400 hover:text-red-300 p-1"
-                              title="Clear reminder"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                        <div className="text-white text-sm bg-black/20 p-2 rounded border border-yellow-600/20">
-                          {userItem.payment_reminder}
-                        </div>
-                      </div>
-                    ) : editingReminder === userItem.id ? (
-                      <div className="space-y-2">
-                        <div className="text-yellow-400 text-xs font-medium">
-                          {userItem.payment_reminder ? 'Edit' : 'Set'} Payment Reminder
-                        </div>
-                        <textarea
-                          value={reminderText}
-                          onChange={(e) => setReminderText(e.target.value)}
-                          placeholder="Reminder text (shown as running line in user cabinet)..."
-                          rows={2}
-                          className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 resize-none"
-                        />
-                        <div className="flex gap-2 justify-end">
-                          <button
-                            onClick={() => {
-                              setEditingReminder(null);
-                              setReminderText('');
-                            }}
-                            className="bg-gray-600 hover:bg-gray-500 px-3 py-1 rounded text-sm transition-colors"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={() => handleUpdateReminder(userItem.id)}
-                            disabled={isUpdatingReminder || !reminderText.trim()}
-                            className="bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
-                          >
-                            {isUpdatingReminder ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <Check className="w-3 h-3" />
-                            )}
-                            Save
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setEditingReminder(userItem.id);
-                          setReminderText('');
-                        }}
-                        className="text-yellow-400 hover:text-yellow-300 text-sm flex items-center gap-1 w-full justify-center py-1"
-                      >
-                        <Plus className="w-3 h-3" />
-                        Set Payment Reminder
-                      </button>
-                    )}
-                  </div>
+              ) : (
+                <div className="overflow-x-auto rounded-lg border border-gray-700">
+                  <table className="w-full text-left border-collapse bg-gray-800/50">
+                    <thead>
+                      <tr className="border-b border-gray-700 text-gray-400 text-sm bg-gray-900/50">
+                        <th className="p-4 font-medium">User</th>
+                        <th className="p-4 font-medium">Role</th>
+                        <th className="p-4 font-medium">Access Level</th>
+                        <th className="p-4 font-medium">Status</th>
+                        <th className="p-4 font-medium">Expires</th>
+                        <th className="p-4 font-medium text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700">
+                      {users.map((userItem) => (
+                        <Fragment key={userItem.id}>
+                          <tr className="hover:bg-gray-700/30 transition-colors">
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <div className="bg-gray-700 p-2 rounded-lg">
+                                  <User className="w-4 h-4 text-gray-300" />
+                                </div>
+                                <div>
+                                  <div className="font-medium text-white">{userItem.email}</div>
+                                  {userItem.name && <div className="text-sm text-gray-400">{userItem.name}</div>}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
+                                userItem.role === 'admin' ? 'bg-primary/20 text-primary' : 'bg-gray-700 text-gray-300'
+                              }`}>
+                                {userItem.role === 'admin' && <Shield className="w-3 h-3" />}
+                                {userItem.role === 'admin' ? 'Admin' : 'User'}
+                              </span>
+                            </td>
+                            <td className="p-4">
+                              {editingUser === userItem.id ? (
+                                <div className="flex items-center gap-2">
+                                  <select
+                                    value={userItem.access_level}
+                                    onChange={(e) => handleUpdateUserAccess(userItem.id, parseInt(e.target.value) as AccessLevel)}
+                                    className="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-xs text-white focus:outline-none focus:ring-2 focus:ring-primary w-32"
+                                  >
+                                    <option value={1}>Basic</option>
+                                    <option value={2}>Premium</option>
+                                    <option value={3}>VIP</option>
+                                    <option value={4}>Without Road Map</option>
+                                    <option value={5}>Blocked</option>
+                                    <option value={6}>Creative Push Only</option>
+                                    <option value={7}>Payment Overdue</option>
+                                  </select>
+                                  <button onClick={() => setEditingUser(null)} className="text-gray-400 hover:text-white">
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setEditingUser(userItem.id)}
+                                  className="group flex items-center gap-1.5 hover:text-blue-400 transition-colors"
+                                >
+                                  <div className={`w-2 h-2 rounded-full ${
+                                    userItem.access_level >= 3 ? 'bg-purple-500' : 
+                                    userItem.access_level === 2 ? 'bg-blue-500' : 'bg-gray-500'
+                                  }`} />
+                                  <span className="text-sm">{ACCESS_LEVELS[userItem.access_level as AccessLevel]?.name || 'Unknown'}</span>
+                                  <Edit3 className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </button>
+                              )}
+                            </td>
+                            <td className="p-4">
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-2">
+                                  <Circle className={`w-2 h-2 ${userItem.is_active ? 'text-green-500 fill-green-500' : 'text-gray-500 fill-gray-500'}`} />
+                                  <span className={`text-sm ${userItem.is_active ? 'text-green-400' : 'text-gray-500'}`}>
+                                    {userItem.is_active ? 'Active' : 'Offline'}
+                                  </span>
+                                </div>
+                                {userItem.last_seen && (
+                                  <span className="text-xs text-gray-500">
+                                    {new Date(userItem.last_seen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              {editingExpiry === userItem.id ? (
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="date"
+                                    value={expiryValue}
+                                    onChange={(e) => setExpiryValue(e.target.value)}
+                                    className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white w-28"
+                                  />
+                                  <button
+                                    onClick={() => handleUpdateUserExpiry(userItem.id, expiryValue ? new Date(expiryValue).toISOString() : null)}
+                                    disabled={isUpdatingExpiry}
+                                    className="text-green-500 hover:text-green-400 p-1"
+                                  >
+                                    <Check className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingExpiry(null)}
+                                    className="text-gray-400 hover:text-white p-1"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <span className={!userItem.access_expires_at ? 'text-green-500' : (new Date(userItem.access_expires_at) < new Date() ? 'text-red-500' : 'text-gray-300')}>
+                                    {userItem.access_expires_at 
+                                      ? new Date(userItem.access_expires_at).toLocaleDateString() 
+                                      : 'Lifetime'}
+                                  </span>
+                                  <button
+                                    onClick={() => {
+                                      setEditingExpiry(userItem.id);
+                                      setExpiryValue(userItem.access_expires_at ? new Date(userItem.access_expires_at).toISOString().split('T')[0] : '');
+                                    }}
+                                    className="text-gray-600 hover:text-blue-400 transition-colors"
+                                  >
+                                    <Edit3 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                            <td className="p-4 text-right">
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  onClick={() => {
+                                    if (expandedUser === userItem.id) {
+                                      setExpandedUser(null);
+                                      // Clear all editing states when closing
+                                      setAdjustingBalance(null);
+                                      setChangingPassword(null);
+                                      setEditingReminder(null);
+                                      setEditingOverdue(null);
+                                    } else {
+                                      setExpandedUser(userItem.id);
+                                    }
+                                  }}
+                                  className={`p-2 rounded-lg transition-colors relative ${
+                                    expandedUser === userItem.id ? 'bg-gray-700 text-white' : 'hover:bg-gray-700 text-gray-400'
+                                  }`}
+                                  title="More Actions & Details"
+                                >
+                                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expandedUser === userItem.id ? 'rotate-180' : ''}`} />
+                                  {/* Badge count */}
+                                  {(
+                                    (userItem.payment_reminder ? 1 : 0) + 
+                                    (userItem.overdue_message ? 1 : 0) +
+                                    (userItem.expired_message ? 1 : 0)
+                                  ) > 0 && (
+                                    <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                                      {(userItem.payment_reminder ? 1 : 0) + (userItem.overdue_message ? 1 : 0) + (userItem.expired_message ? 1 : 0)}
+                                    </span>
+                                  )}
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteUser(userItem.id)}
+                                  disabled={userItem.id === user?.id}
+                                  className="p-2 hover:bg-red-900/30 text-gray-400 hover:text-red-500 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                  title="Delete User"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                          
+                          {/* Expanded Details Row */}
+                          {(expandedUser === userItem.id || adjustingBalance === userItem.id || changingPassword === userItem.id || editingReminder === userItem.id || editingOverdue === userItem.id) && (
+                            <tr className="bg-gray-800/30">
+                              <td colSpan={6} className="p-4 border-l-2 border-primary">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                  
+                                  {/* Balance Section */}
+                                  <div className="space-y-2">
+                                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Balance Adjustment</div>
+                                    <div className="flex flex-col gap-2">
+                                      <select
+                                        value={balanceType}
+                                        onChange={(e) => setBalanceType(e.target.value as 'add' | 'set')}
+                                        className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white"
+                                      >
+                                        <option value="add">Add</option>
+                                        <option value="set">Set</option>
+                                      </select>
+                                      <div className="flex gap-2">
+                                        <input
+                                          type="number"
+                                          value={balanceAmount}
+                                          onChange={(e) => {
+                                            if (adjustingBalance !== userItem.id) {
+                                              setAdjustingBalance(userItem.id);
+                                              setBalanceAmount('');
+                                              setBalanceType('add');
+                                            }
+                                            setBalanceAmount(e.target.value)
+                                          }}
+                                          placeholder="Amount"
+                                          className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white"
+                                        />
+                                        <button
+                                          onClick={() => handleAdjustBalance(userItem.id)}
+                                          disabled={isUpdatingBalance || !balanceAmount}
+                                          className="bg-green-600 hover:bg-green-500 text-white rounded px-2 py-1 text-xs"
+                                        >
+                                          <Check className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
 
-                  {/* Overdue Message Section */}
-                  <div className="mt-3 p-3 bg-red-900/20 rounded-lg border border-red-600/30">
-                    {userItem.overdue_message && editingOverdue !== userItem.id ? (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="text-red-400 text-xs font-medium flex items-center gap-1">
-                            <MessageSquare className="w-3 h-3" />
-                            Custom Overdue Message
-                          </div>
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => {
-                                setEditingOverdue(userItem.id);
-                                setOverdueText(userItem.overdue_message || '');
-                              }}
-                              className="text-blue-400 hover:text-blue-300 p-1"
-                              title="Edit overdue message"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteOverdue(userItem.id)}
-                              className="text-red-400 hover:text-red-300 p-1"
-                              title="Clear overdue message"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                        <div className="text-white text-sm bg-black/20 p-2 rounded border border-red-600/20 max-w-full overflow-hidden text-ellipsis">
-                          {userItem.overdue_message}
-                        </div>
-                      </div>
-                    ) : editingOverdue === userItem.id ? (
-                      <div className="space-y-2">
-                        <div className="text-red-400 text-xs font-medium">
-                          {userItem.overdue_message ? 'Edit' : 'Set'} Overdue Message
-                        </div>
-                        <textarea
-                          value={overdueText}
-                          onChange={(e) => setOverdueText(e.target.value)}
-                          placeholder="Custom message for overdue screen..."
-                          rows={2}
-                          className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
-                        />
-                        <div className="flex gap-2 justify-end">
-                          <button
-                            onClick={() => {
-                              setEditingOverdue(null);
-                              setOverdueText('');
-                            }}
-                            className="bg-gray-600 hover:bg-gray-500 px-3 py-1 rounded text-sm transition-colors"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={() => handleUpdateOverdue(userItem.id)}
-                            disabled={isUpdatingOverdue || !overdueText.trim()}
-                            className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-3 py-1 rounded text-sm transition-colors flex items-center gap-1"
-                          >
-                            {isUpdatingOverdue ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <Check className="w-3 h-3" />
-                            )}
-                            Save
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setEditingOverdue(userItem.id);
-                          setOverdueText('');
-                        }}
-                        className="text-red-400 hover:text-red-300 text-sm flex items-center gap-1 w-full justify-center py-1"
-                      >
-                        <Plus className="w-3 h-3" />
-                        Set Custom Overdue Message
-                      </button>
-                    )}
-                  </div>
-                  
-                  {/* Форма регулювання балансу */}
-                  {adjustingBalance === userItem.id && (
-                    <div className="mt-4 p-4 bg-gray-700 rounded-lg w-full">
-                      <h4 className="text-sm font-medium text-gray-300 mb-3">Adjust Balance for {userItem.email}</h4>
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <select
-                          value={balanceType}
-                          onChange={(e) => setBalanceType(e.target.value as 'add' | 'set')}
-                          className="px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                        >
-                          <option value="add">Add to current</option>
-                          <option value="set">Set total</option>
-                        </select>
-                        <input
-                          type="number"
-                          value={balanceAmount}
-                          onChange={(e) => setBalanceAmount(e.target.value)}
-                          placeholder="Amount"
-                          className="flex-1 px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleAdjustBalance(userItem.id)}
-                            disabled={isUpdatingBalance || !balanceAmount}
-                            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-                          >
-                            {isUpdatingBalance ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Check className="w-4 h-4" />
-                            )}
-                            Save
-                          </button>
-                          <button
-                            onClick={() => setAdjustingBalance(null)}
-                            className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-                          >
-                            <X className="w-4 h-4" />
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Форма зміни пароля */}
-                  {changingPassword === userItem.id && (
-                    <div className="mt-4 p-4 bg-gray-700 rounded-lg w-full">
-                      <h4 className="text-sm font-medium text-gray-300 mb-3">Change Password for {userItem.email}</h4>
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <input
-                          type="password"
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          placeholder="New password (min 6 chars)"
-                          className="flex-1 px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleChangePassword(userItem.id)}
-                            disabled={isUpdatingPassword || newPassword.length < 6}
-                            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-                          >
-                            {isUpdatingPassword ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Check className="w-4 h-4" />
-                            )}
-                            Save
-                          </button>
-                          <button
-                            onClick={() => {
-                              setChangingPassword(null);
-                              setNewPassword('');
-                            }}
-                            className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-                          >
-                            <X className="w-4 h-4" />
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                                  {/* Password Section */}
+                                  <div className="space-y-2">
+                                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Reset Password</div>
+                                    <div className="flex gap-2">
+                                      <input
+                                        type="password"
+                                        value={newPassword}
+                                        onChange={(e) => {
+                                          if (changingPassword !== userItem.id) {
+                                            setChangingPassword(userItem.id);
+                                            setNewPassword('');
+                                          }
+                                          setNewPassword(e.target.value)
+                                        }}
+                                        placeholder="New Pass"
+                                        className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white"
+                                      />
+                                      <button
+                                        onClick={() => handleChangePassword(userItem.id)}
+                                        disabled={isUpdatingPassword || newPassword.length < 6}
+                                        className="bg-yellow-600 hover:bg-yellow-500 text-white rounded px-2 py-1 text-xs"
+                                      >
+                                        <Key className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Reminder Section */}
+                                  <div className="space-y-2">
+                                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center justify-between">
+                                      <span>Payment Reminder</span>
+                                      {userItem.payment_reminder && (
+                                        <button onClick={() => handleDeleteReminder(userItem.id)} className="text-red-400 hover:text-red-300">
+                                          <Trash2 className="w-3 h-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <input
+                                        type="text"
+                                        value={reminderText}
+                                        onChange={(e) => {
+                                          if (editingReminder !== userItem.id) {
+                                            setEditingReminder(userItem.id);
+                                            setReminderText(userItem.payment_reminder || '');
+                                          }
+                                          setReminderText(e.target.value)
+                                        }}
+                                        placeholder={userItem.payment_reminder || "Set reminder..."}
+                                        className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white"
+                                      />
+                                      <button
+                                        onClick={() => handleUpdateReminder(userItem.id)}
+                                        disabled={isUpdatingReminder}
+                                        className="bg-blue-600 hover:bg-blue-500 text-white rounded px-2 py-1 text-xs"
+                                      >
+                                        <Check className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                   {/* Overdue Section */}
+                                  <div className="space-y-2">
+                                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center justify-between">
+                                      <span>Overdue Message</span>
+                                      {userItem.overdue_message && (
+                                        <button onClick={() => handleDeleteOverdue(userItem.id)} className="text-red-400 hover:text-red-300">
+                                          <Trash2 className="w-3 h-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <input
+                                        type="text"
+                                        value={overdueText}
+                                        onChange={(e) => {
+                                          if (editingOverdue !== userItem.id) {
+                                            setEditingOverdue(userItem.id);
+                                            setOverdueText(userItem.overdue_message || '');
+                                          }
+                                          setOverdueText(e.target.value)
+                                        }}
+                                        placeholder={userItem.overdue_message || "Set message..."}
+                                        className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white"
+                                      />
+                                      <button
+                                        onClick={() => handleUpdateOverdue(userItem.id)}
+                                        disabled={isUpdatingOverdue}
+                                        className="bg-red-600 hover:bg-red-500 text-white rounded px-2 py-1 text-xs"
+                                      >
+                                        <Check className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Expired Section */}
+                                  <div className="space-y-2">
+                                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center justify-between">
+                                      <span>Expired Message</span>
+                                      {userItem.expired_message && (
+                                        <button onClick={() => handleClearExpired(userItem.id)} className="text-red-400 hover:text-red-300">
+                                          <Trash2 className="w-3 h-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <input
+                                        type="text"
+                                        value={expiredText}
+                                        onChange={(e) => {
+                                          if (editingExpired !== userItem.id) {
+                                            setEditingExpired(userItem.id);
+                                            setExpiredText(userItem.expired_message || '');
+                                          }
+                                          setExpiredText(e.target.value)
+                                        }}
+                                        placeholder={userItem.expired_message || "Set expired message..."}
+                                        className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white"
+                                      />
+                                      <button
+                                        onClick={() => handleUpdateExpired(userItem.id)}
+                                        disabled={isUpdatingExpired}
+                                        className="bg-orange-600 hover:bg-orange-500 text-white rounded px-2 py-1 text-xs"
+                                      >
+                                        <Check className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              ))}
+              )}
             </div>
           )}
 
@@ -1998,6 +2216,189 @@ export default function AdminPanel() {
               </div>
             </div>
           )}
+          
+          {activeTab === 'services' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-bold">Services Management</h3>
+                <button
+                  onClick={() => {
+                    setShowServiceForm(true);
+                    setNewService({ title: '', price: 0, type: 'subscription', duration_days: 30, is_active: true, description: '', image_url: '' });
+                    setIsEditingService(null);
+                  }}
+                  className="bg-primary hover:bg-blue-600 px-4 py-2 rounded-lg flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" /> Add Service
+                </button>
+              </div>
+
+              {showServiceForm && (
+                <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 mb-6">
+                  <h4 className="text-lg font-bold mb-4">{isEditingService ? 'Edit Service' : 'New Service'}</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Title</label>
+                      <input 
+                        className="w-full bg-gray-700 rounded-lg p-2 text-white"
+                        value={newService.title}
+                        onChange={e => setNewService({...newService, title: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Price</label>
+                      <input 
+                        type="number"
+                        className="w-full bg-gray-700 rounded-lg p-2 text-white"
+                        value={newService.price}
+                        onChange={e => setNewService({...newService, price: Number(e.target.value)})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Type</label>
+                      <select 
+                        className="w-full bg-gray-700 rounded-lg p-2 text-white"
+                        value={newService.type}
+                        onChange={e => setNewService({...newService, type: e.target.value})}
+                      >
+                        <option value="subscription">Subscription</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Duration (Days)</label>
+                      <input 
+                        type="number"
+                        className="w-full bg-gray-700 rounded-lg p-2 text-white"
+                        value={newService.duration_days}
+                        onChange={e => setNewService({...newService, duration_days: Number(e.target.value)})}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm text-gray-400 mb-1">Description</label>
+                      <textarea 
+                        className="w-full bg-gray-700 rounded-lg p-2 text-white"
+                        rows={3}
+                        value={newService.description}
+                        onChange={e => setNewService({...newService, description: e.target.value})}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                       <label className="block text-sm text-gray-400 mb-1">Image URL</label>
+                       <input 
+                        className="w-full bg-gray-700 rounded-lg p-2 text-white"
+                        value={newService.image_url}
+                        onChange={e => setNewService({...newService, image_url: e.target.value})}
+                       />
+                    </div>
+                    <div className="md:col-span-2 flex items-center gap-2">
+                      <input 
+                        type="checkbox"
+                        id="is_active"
+                        checked={newService.is_active}
+                        onChange={e => setNewService({...newService, is_active: e.target.checked})}
+                      />
+                      <label htmlFor="is_active" className="text-sm text-gray-400">Active (Visible in Shop)</label>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 mt-4">
+                    <button 
+                      onClick={() => setShowServiceForm(false)}
+                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={() => handleUpdateService({ ...newService, id: isEditingService?.id })}
+                      className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg"
+                    >
+                      Save Service
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {services.map(service => (
+                  <div key={service.id} className="bg-gray-800 p-4 rounded-xl border border-gray-700 relative group">
+                    <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => {
+                          setIsEditingService(service);
+                          setNewService(service);
+                          setShowServiceForm(true);
+                        }}
+                        className="p-2 bg-blue-600 rounded-lg hover:bg-blue-500"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button 
+                         onClick={() => handleDeleteService(service.id)}
+                         className="p-2 bg-red-600 rounded-lg hover:bg-red-500"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <h4 className="font-bold text-lg mb-1">{service.title}</h4>
+                    <p className="text-sm text-gray-400 mb-2 h-10 overflow-hidden">{service.description}</p>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xl font-bold">${service.price}</span>
+                      <span className={`px-2 py-1 text-xs rounded-full ${service.is_active ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                        {service.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    <div className="mt-2 text-xs text-gray-500">
+                      Type: {service.type} | Duration: {service.duration_days} days
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'purchases' && (
+            <div className="bg-gray-800 rounded-xl overflow-hidden">
+               <div className="overflow-x-auto">
+                 <table className="w-full text-left">
+                   <thead className="bg-[#111] text-gray-400 uppercase text-xs">
+                     <tr>
+                       <th className="px-6 py-3">Date</th>
+                       <th className="px-6 py-3">User</th>
+                       <th className="px-6 py-3">Service</th>
+                       <th className="px-6 py-3">Amount</th>
+                       <th className="px-6 py-3">Status</th>
+                     </tr>
+                   </thead>
+                   <tbody className="divide-y divide-gray-700">
+                     {purchases.map(purchase => (
+                       <tr key={purchase.id} className="hover:bg-gray-700/50">
+                          <td className="px-6 py-4 text-sm text-gray-300">
+                            {new Date(purchase.created_at).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-white">{purchase.user?.email || 'Unknown'}</div>
+                            <div className="text-xs text-gray-500">{purchase.user?.name}</div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-white">{purchase.service?.title || 'Unknown Service'}</td>
+                          <td className="px-6 py-4 text-sm font-bold text-white">${purchase.amount}</td>
+                          <td className="px-6 py-4">
+                            <span className="px-2 py-1 text-xs bg-green-500/10 text-green-400 rounded-full border border-green-500/20">
+                              {purchase.status}
+                            </span>
+                          </td>
+                       </tr>
+                     ))}
+                     {purchases.length === 0 && (
+                       <tr>
+                         <td colSpan={5} className="px-6 py-8 text-center text-gray-500">No purchases found</td>
+                       </tr>
+                     )}
+                   </tbody>
+                 </table>
+               </div>
+            </div>
+          )}
+
         </div>
       </div>
     </div>

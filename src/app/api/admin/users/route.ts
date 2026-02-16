@@ -5,7 +5,7 @@ export async function GET(request: NextRequest) {
   try {
     const { data: users, error } = await supabaseAdmin
       .from('profiles')
-      .select('id, email, name, role, created_at, access_level, last_seen, is_active, payment_reminder, overdue_message')
+      .select('id, email, name, role, created_at, access_level, last_seen, is_active, payment_reminder, overdue_message, expired_message, access_expires_at')
       .order('created_at', { ascending: false });
     
     if (users) {
@@ -67,7 +67,8 @@ export async function POST(request: NextRequest) {
         name: name || email,
         role: role || 'user',
         access_level: access_level || 1,
-        is_approved: true
+        is_approved: true,
+        access_expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString()
       })
       .select()
       .single();
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { id, access_level, role, password, overdue_message } = await request.json();
+    const { id, access_level, role, password, overdue_message, expired_message, access_expires_at } = await request.json();
     
     if (!id) {
       return NextResponse.json({ success: false, message: 'User ID not specified' }, { status: 400 });
@@ -127,6 +128,8 @@ export async function PUT(request: NextRequest) {
     if (access_level !== undefined) updateData.access_level = access_level;
     if (role !== undefined) updateData.role = role;
     if (overdue_message !== undefined) updateData.overdue_message = overdue_message;
+    if (expired_message !== undefined) updateData.expired_message = expired_message;
+    if (access_expires_at !== undefined) updateData.access_expires_at = access_expires_at;
     
     if (Object.keys(updateData).length > 0) {
     const { data: updatedProfile, error: profileError } = await supabaseAdmin

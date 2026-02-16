@@ -21,6 +21,13 @@ export default function ProtectedRoute({ children, requireAdmin = false }: Prote
     if (isAuthenticated && typeof window !== 'undefined' && user && user.access_level === 7) {
       window.location.href = '/payment-overdue';
     }
+
+    if (isAuthenticated && typeof window !== 'undefined' && user && user.role !== 'admin' && user.access_expires_at) {
+      const expiryDate = new Date(user.access_expires_at);
+      if (expiryDate < new Date()) {
+        window.location.href = '/access-expired';
+      }
+    }
   }, [isAuthenticated, user]);
 
   if (isInitializing) {

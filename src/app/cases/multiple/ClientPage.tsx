@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ExternalLink, Play, TrendingDown, CheckCircle, Users, ArrowRight } from 'lucide-react';

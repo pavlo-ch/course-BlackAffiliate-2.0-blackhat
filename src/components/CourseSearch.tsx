@@ -63,7 +63,32 @@ export default function CourseSearch() {
         return;
       }
 
-      const { data: { session } } = await supabase.auth.getSession();
+      let session = null;
+      
+      const sessionTimeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
+      
+      try {
+        const sessionResult = await Promise.race([
+          (async () => {
+            const { data } = await supabase.auth.getSession();
+            if (data.session) {
+              const expiresAt = data.session.expires_at || 0;
+              const now = Math.floor(Date.now() / 1000);
+              if (expiresAt - now < 60) {
+                const { data: refreshData } = await supabase.auth.refreshSession();
+                return refreshData.session;
+              }
+              return data.session;
+            }
+            const { data: refreshData } = await supabase.auth.refreshSession();
+            return refreshData.session;
+          })(),
+          sessionTimeout
+        ]);
+        session = sessionResult;
+      } catch {
+        session = null;
+      }
       
       if (signal.aborted || searchIdRef.current !== searchId) {
         return;
@@ -71,7 +96,7 @@ export default function CourseSearch() {
       
       if (!session) {
         setStatus('error');
-        setErrorMessage('Please log in to search.');
+        setErrorMessage('Session expired. Please refresh the page.');
         searchStartTimeRef.current = null;
         return;
       }

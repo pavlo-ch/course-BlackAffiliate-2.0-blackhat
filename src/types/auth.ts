@@ -16,6 +16,11 @@ export interface User {
   access_expires_at?: string | null;
   device_fingerprint?: string | null;
   device_info?: Record<string, string> | null;
+  device_token?: string | null;
+  first_fingerprint?: string | null;
+  first_device_info?: Record<string, string> | null;
+  last_fingerprint?: string | null;
+  last_device_info?: Record<string, string> | null;
 }
 
 export interface LoginCredentials {

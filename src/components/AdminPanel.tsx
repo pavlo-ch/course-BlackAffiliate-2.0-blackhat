@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, Fragment } from 'react';
 import Link from 'next/link';
-import { User, Plus, Trash2, Mail, Shield, Calendar, ArrowLeft, Clock, Check, X, Bell, Edit3, Megaphone, Key, Loader2, Circle, DollarSign, ExternalLink, Wallet, MessageSquare, ShoppingBag, ChevronDown } from 'lucide-react';
+import { User, Plus, Trash2, Mail, Shield, Calendar, ArrowLeft, Clock, Check, X, Bell, Edit3, Megaphone, Key, Loader2, Circle, DollarSign, ExternalLink, Wallet, MessageSquare, ShoppingBag, ChevronDown, Smartphone, Monitor, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { User as UserType, RegistrationRequest, ACCESS_LEVELS, AccessLevel } from '@/types/auth';
 import { AnnouncementWithReadStatus, CreateAnnouncementRequest } from '@/types/announcements';
@@ -214,6 +214,11 @@ export default function AdminPanel() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [isLoadingPurchases, setIsLoadingPurchases] = useState(true);
 
+  // Device attempts
+  const [deviceAttempts, setDeviceAttempts] = useState<Record<string, any[]>>({});
+  const [loadingDeviceAttempts, setLoadingDeviceAttempts] = useState<string | null>(null);
+  const [resettingDevice, setResettingDevice] = useState<string | null>(null);
+
   const loadUsers = useCallback(async () => {
     setIsLoadingUsers(true);
     try {
@@ -389,6 +394,48 @@ export default function AdminPanel() {
       console.error('Error loading transactions:', error);
     } finally {
       setIsLoadingTransactions(false);
+    }
+  }, []);
+
+  const loadDeviceAttempts = useCallback(async (userId: string) => {
+    setLoadingDeviceAttempts(userId);
+    try {
+      const token = await getAuthToken();
+      const response = await fetch(`/api/device?userId=${userId}`, {
+        headers: { 'Authorization': token ? `Bearer ${token}` : '' }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setDeviceAttempts(prev => ({ ...prev, [userId]: data.attempts || [] }));
+      }
+    } catch (error) {
+      console.error('Error loading device attempts:', error);
+    } finally {
+      setLoadingDeviceAttempts(null);
+    }
+  }, []);
+
+  const handleResetDevice = useCallback(async (userId: string) => {
+    if (!confirm('Reset device binding for this user? They will be able to log in from any device (new device will be saved on next login).')) return;
+    
+    setResettingDevice(userId);
+    try {
+      const token = await getAuthToken();
+      const response = await fetch(`/api/device?userId=${userId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': token ? `Bearer ${token}` : '' }
+      });
+      const data = await response.json();
+      if (data.success) {
+        alert('Device binding reset successfully');
+        await loadUsers();
+      } else {
+        alert(data.message || 'Error resetting device');
+      }
+    } catch (error) {
+      console.error('Error resetting device:', error);
+    } finally {
+      setResettingDevice(null);
     }
   }, []);
 
@@ -1740,6 +1787,138 @@ export default function AdminPanel() {
                                     </div>
                                   </div>
 
+                                </div>
+
+                                {/* Device Info Section */}
+                                <div className="mt-4 pt-4 border-t border-gray-700">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                                      <Monitor className="w-3.5 h-3.5" />
+                                      <span>Device Binding</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {(userItem.device_token || userItem.first_fingerprint) && (
+                                        <button
+                                          onClick={() => handleResetDevice(userItem.id)}
+                                          disabled={resettingDevice === userItem.id}
+                                          className="inline-flex items-center gap-1 text-xs text-yellow-500 hover:text-yellow-400 transition-colors"
+                                        >
+                                          <RefreshCw className={`w-3 h-3 ${resettingDevice === userItem.id ? 'animate-spin' : ''}`} />
+                                          Reset Device
+                                        </button>
+                                      )}
+                                      <button
+                                        onClick={() => loadDeviceAttempts(userItem.id)}
+                                        disabled={loadingDeviceAttempts === userItem.id}
+                                        className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                                      >
+                                        {loadingDeviceAttempts === userItem.id ? (
+                                          <Loader2 className="w-3 h-3 animate-spin" />
+                                        ) : (
+                                          <AlertTriangle className="w-3 h-3" />
+                                        )}
+                                        Load Attempts
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-2 mb-3">
+                                    <div className="flex items-center gap-2 text-xs">
+                                      <span className="text-gray-500">Cookie Token:</span>
+                                      {userItem.device_token ? (
+                                        <span className="text-green-400 font-medium">Active</span>
+                                      ) : (
+                                        <span className="text-gray-600">Not set</span>
+                                      )}
+                                    </div>
+
+                                    {userItem.first_fingerprint ? (
+                                      <div className="bg-gray-900/50 rounded-lg p-3">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          {(userItem.first_device_info as any)?.device_type === 'Mobile' ? (
+                                            <Smartphone className="w-4 h-4 text-blue-400" />
+                                          ) : (
+                                            <Monitor className="w-4 h-4 text-blue-400" />
+                                          )}
+                                          <span className="text-xs text-blue-400 font-medium">Registration Device</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                                          {(userItem.first_device_info as any)?.browser && (
+                                            <div><span className="text-gray-500">Browser:</span> <span className="text-gray-300">{(userItem.first_device_info as any).browser}</span></div>
+                                          )}
+                                          {(userItem.first_device_info as any)?.os && (
+                                            <div><span className="text-gray-500">OS:</span> <span className="text-gray-300">{(userItem.first_device_info as any).os}</span></div>
+                                          )}
+                                          {(userItem.first_device_info as any)?.screen && (
+                                            <div><span className="text-gray-500">Screen:</span> <span className="text-gray-300">{(userItem.first_device_info as any).screen}</span></div>
+                                          )}
+                                          <div><span className="text-gray-500">FP:</span> <span className="text-gray-300 font-mono">{userItem.first_fingerprint}</span></div>
+                                        </div>
+                                      </div>
+                                    ) : null}
+
+                                    {userItem.last_fingerprint && userItem.last_fingerprint !== userItem.first_fingerprint ? (
+                                      <div className="bg-gray-900/50 rounded-lg p-3">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          {(userItem.last_device_info as any)?.device_type === 'Mobile' ? (
+                                            <Smartphone className="w-4 h-4 text-green-400" />
+                                          ) : (
+                                            <Monitor className="w-4 h-4 text-green-400" />
+                                          )}
+                                          <span className="text-xs text-green-400 font-medium">Last Login Device</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                                          {(userItem.last_device_info as any)?.browser && (
+                                            <div><span className="text-gray-500">Browser:</span> <span className="text-gray-300">{(userItem.last_device_info as any).browser}</span></div>
+                                          )}
+                                          {(userItem.last_device_info as any)?.os && (
+                                            <div><span className="text-gray-500">OS:</span> <span className="text-gray-300">{(userItem.last_device_info as any).os}</span></div>
+                                          )}
+                                          {(userItem.last_device_info as any)?.screen && (
+                                            <div><span className="text-gray-500">Screen:</span> <span className="text-gray-300">{(userItem.last_device_info as any).screen}</span></div>
+                                          )}
+                                          <div><span className="text-gray-500">FP:</span> <span className="text-gray-300 font-mono">{userItem.last_fingerprint}</span></div>
+                                        </div>
+                                      </div>
+                                    ) : null}
+
+                                    {!userItem.first_fingerprint && !userItem.device_token && (
+                                      <div className="text-xs text-gray-500">No device registered yet. Will be set on next login.</div>
+                                    )}
+                                  </div>
+
+                                  {deviceAttempts[userItem.id] && deviceAttempts[userItem.id].length > 0 && (
+                                    <div className="space-y-2">
+                                      <div className="text-xs font-semibold text-red-400 flex items-center gap-1">
+                                        <AlertTriangle className="w-3 h-3" />
+                                        Blocked Login Attempts ({deviceAttempts[userItem.id].length})
+                                      </div>
+                                      <div className="max-h-40 overflow-y-auto space-y-1">
+                                        {deviceAttempts[userItem.id].map((attempt: any, idx: number) => (
+                                          <div key={attempt.id || idx} className="bg-red-900/20 border border-red-900/30 rounded p-2 text-xs">
+                                            <div className="flex items-center justify-between mb-1">
+                                              <span className="text-red-400 font-medium">
+                                                {new Date(attempt.created_at).toLocaleString()}
+                                              </span>
+                                              <span className="text-gray-500">IP: {attempt.ip_address || 'unknown'}</span>
+                                            </div>
+                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-1 text-gray-400">
+                                              {attempt.device_info?.browser && <span>Browser: {attempt.device_info.browser}</span>}
+                                              {attempt.device_info?.os && <span>OS: {attempt.device_info.os}</span>}
+                                              {attempt.device_info?.device_type && <span>Type: {attempt.device_info.device_type}</span>}
+                                              {attempt.device_info?.screen && <span>Screen: {attempt.device_info.screen}</span>}
+                                              {attempt.device_info?.timezone && <span>TZ: {attempt.device_info.timezone}</span>}
+                                              <span className="font-mono">FP: {attempt.fingerprint}</span>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {deviceAttempts[userItem.id] && deviceAttempts[userItem.id].length === 0 && (
+                                    <div className="text-xs text-gray-500">No blocked login attempts.</div>
+                                  )}
                                 </div>
                               </td>
                             </tr>

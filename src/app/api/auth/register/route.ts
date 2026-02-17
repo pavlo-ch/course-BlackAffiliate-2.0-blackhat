@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, name } = await request.json();
+    const { email, password, name, companyName } = await request.json();
     const normalizedEmail = email.toLowerCase();
     
     // Check Blacklist
@@ -42,7 +42,8 @@ export async function POST(request: NextRequest) {
       .insert({
         email: normalizedEmail,
         password,
-        name: name || email.split('@')[0]
+        name: name || email.split('@')[0],
+        company_name: companyName || null
       })
       .select()
       .single();

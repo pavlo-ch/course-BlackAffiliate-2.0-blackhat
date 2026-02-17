@@ -14,6 +14,8 @@ export interface User {
   overdue_message?: string | null;
   expired_message?: string | null;
   access_expires_at?: string | null;
+  device_fingerprint?: string | null;
+  device_info?: Record<string, string> | null;
 }
 
 export interface LoginCredentials {
@@ -26,6 +28,7 @@ export interface RegisterCredentials {
   password: string;
   confirmPassword: string;
   name?: string;
+  companyName?: string;
 }
 
 export interface RegistrationRequest {

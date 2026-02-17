@@ -7,6 +7,30 @@ export async function GET(request: NextRequest) {
       .from('profiles')
       .select('id, email, name, role, created_at, access_level, last_seen, is_active, payment_reminder, overdue_message, expired_message, access_expires_at')
       .order('created_at', { ascending: false });
+
+    if (users) {
+      try {
+        const { data: deviceProfiles } = await supabaseAdmin
+          .from('profiles')
+          .select('id, device_token, device_fingerprint, device_info, first_fingerprint, first_device_info, last_fingerprint, last_device_info');
+
+        if (deviceProfiles) {
+          const deviceMap = new Map(deviceProfiles.map((p: any) => [p.id, p]));
+          users.forEach((u: any) => {
+            const dp = deviceMap.get(u.id);
+            if (dp) {
+              u.device_token = dp.device_token ? 'set' : null;
+              u.device_fingerprint = dp.device_fingerprint;
+              u.device_info = dp.device_info;
+              u.first_fingerprint = dp.first_fingerprint;
+              u.first_device_info = dp.first_device_info;
+              u.last_fingerprint = dp.last_fingerprint;
+              u.last_device_info = dp.last_device_info;
+            }
+          });
+        }
+      } catch {}
+    }
     
     if (users) {
       const now = new Date();

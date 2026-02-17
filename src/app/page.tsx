@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import AccessControl from '@/components/AccessControl';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,6 +22,8 @@ export default function Home() {
   const [showAnnouncementsList, setShowAnnouncementsList] = useState(false);
   const [showBanner, setShowBanner] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const locallyReadIdsRef = useRef<Set<string>>(new Set());
+  const announcementsLoadedRef = useRef(false);
 
   const loadAnnouncements = async () => {
     try {
@@ -47,8 +49,14 @@ export default function Home() {
       const data = await response.json();
       
       if (data.success) {
-        setAnnouncements(data.announcements || []);
-        setUnreadCount(data.unread_count || 0);
+        const serverAnnouncements: AnnouncementWithReadStatus[] = data.announcements || [];
+        const merged = serverAnnouncements.map(a => 
+          locallyReadIdsRef.current.has(a.id) ? { ...a, is_read: true } : a
+        );
+        setAnnouncements(merged);
+        const realUnread = merged.filter(a => !a.is_read).length;
+        setUnreadCount(realUnread);
+        announcementsLoadedRef.current = true;
       } else {
         console.error('Announcements API returned error:', data.message);
       }
@@ -57,56 +65,77 @@ export default function Home() {
     }
   };
 
-  const handleMarkAsRead = async (id: string) => {
+  const getToken = async (): Promise<string | undefined> => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      
-      const response = await fetch(`/api/announcements/${id}/mark-read`, {
-        method: 'POST',
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-        },
-      });
+      const result = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000))
+      ]) as any;
+      if (result?.data?.session?.access_token) return result.data.session.access_token;
+    } catch {}
 
-      const data = await response.json();
+    try {
+      const result = await Promise.race([
+        supabase.auth.refreshSession(),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000))
+      ]) as any;
+      if (result?.data?.session?.access_token) return result.data.session.access_token;
+    } catch {}
 
-      if (data.success) {
-        await loadAnnouncements();
+    try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      if (supabaseUrl) {
+        const projectId = supabaseUrl.match(/https:\/\/([^.]+)\./)?.[1];
+        if (projectId) {
+          const stored = localStorage.getItem(`sb-${projectId}-auth-token`);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed?.access_token) return parsed.access_token;
+          }
+        }
       }
-    } catch (error) {
-      console.error('Error marking announcement as read:', error);
-    }
+    } catch {}
+
+    return undefined;
   };
 
-  const handleMarkAllAsRead = useCallback(async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      
-      const unreadIds = announcements.filter(a => !a.is_read).map(a => a.id);
-      
-      if (unreadIds.length === 0) return;
-      
-      await Promise.all(
+  const handleMarkAsRead = useCallback((id: string) => {
+    locallyReadIdsRef.current.add(id);
+    setAnnouncements(prev => prev.map(a => a.id === id ? { ...a, is_read: true } : a));
+    setUnreadCount(prev => Math.max(0, prev - 1));
+    
+    getToken().then(token => {
+      if (!token) return;
+      fetch(`/api/announcements/${id}/mark-read`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      }).catch(() => {});
+    });
+  }, []);
+
+  const handleMarkAllAsRead = useCallback(() => {
+    const unreadIds = announcements.filter(a => !a.is_read).map(a => a.id);
+    if (unreadIds.length === 0) return;
+
+    unreadIds.forEach(id => locallyReadIdsRef.current.add(id));
+    setAnnouncements(prev => prev.map(a => ({ ...a, is_read: true })));
+    setUnreadCount(0);
+
+    getToken().then(token => {
+      if (!token) return;
+      Promise.all(
         unreadIds.map(id =>
           fetch(`/api/announcements/${id}/mark-read`, {
             method: 'POST',
-            headers: {
-              'Authorization': token ? `Bearer ${token}` : '',
-            },
-          })
+            headers: { 'Authorization': `Bearer ${token}` },
+          }).catch(() => {})
         )
       );
-
-      await loadAnnouncements();
-    } catch (error) {
-      console.error('Error marking all announcements as read:', error);
-    }
+    });
   }, [announcements]);
 
   useEffect(() => {
-    if (user) {
+    if (user && !announcementsLoadedRef.current) {
       loadAnnouncements();
     }
   }, [user]);

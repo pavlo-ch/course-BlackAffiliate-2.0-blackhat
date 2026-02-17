@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, UserPlus, CheckCircle, User } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, UserPlus, CheckCircle, User, Building2, AlertCircle, FileText } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import PolicyModal from './PolicyModal';
 
 export default function RegisterForm() {
   const { register } = useAuth();
@@ -10,10 +11,13 @@ export default function RegisterForm() {
     name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    companyName: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [acceptedPolicy, setAcceptedPolicy] = useState(false);
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
   const [error, setError] = useState('');
@@ -25,6 +29,12 @@ export default function RegisterForm() {
 
     if (!formData.name.trim()) {
       setError('Name is required');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!acceptedPolicy) {
+      setError('Please accept the usage policy');
       setIsLoading(false);
       return;
     }
@@ -129,6 +139,22 @@ export default function RegisterForm() {
 
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
+                Company Name <span className="text-gray-500">(optional)</span>
+              </label>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  value={formData.companyName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="Your company name"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
                 Password
               </label>
               <div className="relative">
@@ -177,6 +203,40 @@ export default function RegisterForm() {
               </div>
             </div>
 
+            <div className="bg-yellow-600/10 border border-yellow-600/30 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-yellow-500 font-medium text-sm mb-1">Device Binding Notice</p>
+                  <p className="text-yellow-200/80 text-sm">
+                    Your account will be linked to this device. You will only be able to access the platform from this device after registration.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={acceptedPolicy}
+                  onChange={(e) => setAcceptedPolicy(e.target.checked)}
+                  className="mt-1 w-5 h-5 rounded border-gray-700 bg-gray-800 text-primary focus:ring-2 focus:ring-primary focus:ring-offset-0 focus:ring-offset-gray-900 cursor-pointer"
+                />
+                <span className="text-sm text-gray-300 flex-1">
+                  I have read and accept the{' '}
+                  <button
+                    type="button"
+                    onClick={() => setIsPolicyModalOpen(true)}
+                    className="text-primary hover:text-red-400 underline inline-flex items-center gap-1 transition-colors"
+                  >
+                    platform usage policy
+                    <FileText className="w-3.5 h-3.5" />
+                  </button>
+                </span>
+              </label>
+            </div>
+
             {error && (
               <div className="bg-red-600/20 border border-red-600/50 rounded-lg p-3">
                 <p className="text-red-400 text-sm">{error}</p>
@@ -209,6 +269,8 @@ export default function RegisterForm() {
           </div>
         </div>
       </div>
+
+      <PolicyModal isOpen={isPolicyModalOpen} onClose={() => setIsPolicyModalOpen(false)} />
     </div>
   );
 }

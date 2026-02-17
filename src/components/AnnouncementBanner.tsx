@@ -33,8 +33,9 @@ export default function AnnouncementBanner({
   const currentAnnouncement = unreadAnnouncements[currentIndex];
   const hasMore = currentIndex < unreadAnnouncements.length - 1;
 
-  const handleMarkAsRead = async () => {
-    await onMarkAsRead(currentAnnouncement.id);
+  const handleMarkAsRead = () => {
+    console.log('🎯 AnnouncementBanner: Mark as read clicked');
+    onMarkAsRead(currentAnnouncement.id);
     if (hasMore) {
       setCurrentIndex(prev => prev + 1);
     } else {
@@ -56,8 +57,8 @@ export default function AnnouncementBanner({
 
   return (
     <div className="fixed bottom-6 right-6 z-50 animate-slide-up">
-      <div className="bg-gradient-to-br from-[#1a1d22] to-[#0f1012] text-white shadow-2xl border border-red-900/60 rounded-2xl max-w-sm w-[92vw] sm:w-96 overflow-hidden backdrop-blur-sm">
-        <div className="px-5 py-3 bg-gradient-to-r from-red-900/40 via-red-800/30 to-transparent flex items-center justify-between border-b border-red-900/30">
+      <div className="bg-gradient-to-br from-[#1a1d22] to-[#0f1012] text-white shadow-2xl border border-red-900/60 rounded-2xl max-w-sm w-[92vw] sm:w-96 overflow-hidden backdrop-blur-sm flex flex-col" style={{ maxHeight: '70vh' }}>
+        <div className="px-5 py-3 bg-gradient-to-r from-red-900/40 via-red-800/30 to-transparent flex items-center justify-between border-b border-red-900/30 flex-shrink-0">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <Sparkles className="w-4 h-4 text-red-400 flex-shrink-0 animate-pulse" />
             <h3 className="text-sm font-bold truncate">{currentAnnouncement.title}</h3>
@@ -76,36 +77,40 @@ export default function AnnouncementBanner({
           </button>
         </div>
 
-        {currentAnnouncement.image_url && (
-          <div className="relative">
-          <img
-            src={currentAnnouncement.image_url}
-            alt={currentAnnouncement.title}
-              className="w-full max-h-48 object-cover"
-          />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-          </div>
-        )}
-
-        <div className="px-5 py-4">
-          <p className="text-white/95 text-sm mb-3 whitespace-pre-wrap leading-relaxed">
-            {currentAnnouncement.content}
-          </p>
-
-          {currentAnnouncement.is_edited && currentAnnouncement.updated_at && (
-            <div className="flex items-center gap-1 text-xs text-blue-400/80 mb-3">
-              <Clock className="w-3 h-3" />
-              <span>
-                Updated {new Date(currentAnnouncement.updated_at).toLocaleDateString('en-US', {
-                  day: 'numeric',
-                  month: 'short',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </span>
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          {currentAnnouncement.image_url && (
+            <div className="relative flex-shrink-0">
+              <img
+                src={currentAnnouncement.image_url}
+                alt={currentAnnouncement.title}
+                className="w-full max-h-48 object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
             </div>
           )}
 
+          <div className="px-5 py-4">
+            <p className="text-white/95 text-sm whitespace-pre-wrap leading-relaxed">
+              {currentAnnouncement.content}
+            </p>
+
+            {currentAnnouncement.is_edited && currentAnnouncement.updated_at && (
+              <div className="flex items-center gap-1 text-xs text-blue-400/80 mt-3">
+                <Clock className="w-3 h-3" />
+                <span>
+                  Updated {new Date(currentAnnouncement.updated_at).toLocaleDateString('en-US', {
+                    day: 'numeric',
+                    month: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="px-5 py-3 border-t border-red-900/30 flex-shrink-0">
           <div className="flex items-center gap-2">
             <button
               onClick={handleMarkAsRead}

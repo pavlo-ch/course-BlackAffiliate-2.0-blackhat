@@ -401,8 +401,13 @@ export default function AdminPanel() {
     setLoadingDeviceAttempts(userId);
     try {
       const token = await getAuthToken();
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       const response = await fetch(`/api/device?userId=${userId}`, {
-        headers: { 'Authorization': token ? `Bearer ${token}` : '' }
+        headers,
+        credentials: 'include',
       });
       const data = await response.json();
       if (data.success) {
@@ -421,9 +426,14 @@ export default function AdminPanel() {
     setResettingDevice(userId);
     try {
       const token = await getAuthToken();
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       const response = await fetch(`/api/device?userId=${userId}`, {
         method: 'DELETE',
-        headers: { 'Authorization': token ? `Bearer ${token}` : '' }
+        headers,
+        credentials: 'include',
       });
       const data = await response.json();
       if (data.success) {
@@ -434,6 +444,7 @@ export default function AdminPanel() {
       }
     } catch (error) {
       console.error('Error resetting device:', error);
+      alert('Network error. Please try again.');
     } finally {
       setResettingDevice(null);
     }
@@ -1849,8 +1860,14 @@ export default function AdminPanel() {
                                           {(userItem.first_device_info as any)?.os && (
                                             <div><span className="text-gray-500">OS:</span> <span className="text-gray-300">{(userItem.first_device_info as any).os}</span></div>
                                           )}
+                                          {(userItem.first_device_info as any)?.device_type && (
+                                            <div><span className="text-gray-500">Type:</span> <span className="text-gray-300">{(userItem.first_device_info as any).device_type}</span></div>
+                                          )}
                                           {(userItem.first_device_info as any)?.screen && (
                                             <div><span className="text-gray-500">Screen:</span> <span className="text-gray-300">{(userItem.first_device_info as any).screen}</span></div>
+                                          )}
+                                          {(userItem.first_device_info as any)?.timezone && (
+                                            <div><span className="text-gray-500">TZ:</span> <span className="text-gray-300">{(userItem.first_device_info as any).timezone}</span></div>
                                           )}
                                           <div><span className="text-gray-500">FP:</span> <span className="text-gray-300 font-mono">{userItem.first_fingerprint}</span></div>
                                         </div>
@@ -1874,8 +1891,14 @@ export default function AdminPanel() {
                                           {(userItem.last_device_info as any)?.os && (
                                             <div><span className="text-gray-500">OS:</span> <span className="text-gray-300">{(userItem.last_device_info as any).os}</span></div>
                                           )}
+                                          {(userItem.last_device_info as any)?.device_type && (
+                                            <div><span className="text-gray-500">Type:</span> <span className="text-gray-300">{(userItem.last_device_info as any).device_type}</span></div>
+                                          )}
                                           {(userItem.last_device_info as any)?.screen && (
                                             <div><span className="text-gray-500">Screen:</span> <span className="text-gray-300">{(userItem.last_device_info as any).screen}</span></div>
+                                          )}
+                                          {(userItem.last_device_info as any)?.timezone && (
+                                            <div><span className="text-gray-500">TZ:</span> <span className="text-gray-300">{(userItem.last_device_info as any).timezone}</span></div>
                                           )}
                                           <div><span className="text-gray-500">FP:</span> <span className="text-gray-300 font-mono">{userItem.last_fingerprint}</span></div>
                                         </div>

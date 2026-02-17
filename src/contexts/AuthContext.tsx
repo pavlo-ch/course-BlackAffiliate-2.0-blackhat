@@ -815,7 +815,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
 
-  const register = async (credentials: RegisterCredentials): Promise<boolean> => {
+  const register = async (credentials: RegisterCredentials): Promise<{ success: boolean; message?: string }> => {
     setIsLoading(true);
     
     try {
@@ -837,7 +837,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!data.success) {
         console.error('Registration error:', data.message);
         setIsLoading(false);
-        return false;
+        return { success: false, message: data.message };
       }
       
       const companyInfo = credentials.companyName ? `\n🏢 Company: ${credentials.companyName}` : '';
@@ -845,11 +845,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await sendTelegramNotification(message);
       
       setIsLoading(false);
-      return true;
+      return { success: true };
     } catch (error) {
       console.error('Registration error:', error);
       setIsLoading(false);
-      return false;
+      return { success: false, message: 'Network error. Please try again.' };
     }
   };
 

@@ -26,7 +26,6 @@ export interface LoginCredentials {
 export interface RegisterCredentials {
   email: string;
   password: string;
-  confirmPassword: string;
   name?: string;
   companyName?: string;
 }
@@ -92,7 +91,7 @@ export interface AuthContextType extends AuthState {
   logout: () => void;
   isAdmin: () => boolean;
   hasAccess: (requiredLevel: AccessLevel, lessonId?: string) => boolean;
-  register: (credentials: RegisterCredentials) => Promise<boolean>;
+  register: (credentials: RegisterCredentials) => Promise<{ success: boolean; message?: string }>;
   getRegistrationRequests: () => RegistrationRequest[];
   loadRegistrationRequests: () => Promise<void>;
   rejectRegistration: (requestId: string) => Promise<boolean>;

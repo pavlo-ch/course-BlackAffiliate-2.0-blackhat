@@ -5,7 +5,7 @@ export async function GET(request: NextRequest) {
   try {
     const { data: users, error } = await supabaseAdmin
       .from('profiles')
-      .select('id, email, name, role, created_at, access_level, last_seen, is_active, payment_reminder, overdue_message, expired_message, access_expires_at')
+      .select('id, email, name, role, created_at, access_level, last_seen, is_active, payment_reminder, overdue_message, expired_message, access_expires_at, team_id')
       .order('created_at', { ascending: false });
 
     if (users) {
@@ -33,6 +33,16 @@ export async function GET(request: NextRequest) {
     }
     
     if (users) {
+      try {
+        const { data: teams } = await supabaseAdmin.from('teams').select('id, name');
+        if (teams) {
+          const teamMap = new Map(teams.map((t: any) => [t.id, t.name]));
+          users.forEach((u: any) => {
+            u.team_name = u.team_id ? teamMap.get(u.team_id) || null : null;
+          });
+        }
+      } catch {}
+
       const now = new Date();
       const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
       

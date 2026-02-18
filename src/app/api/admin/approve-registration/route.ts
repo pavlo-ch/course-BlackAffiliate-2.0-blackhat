@@ -82,13 +82,14 @@ export async function POST(request: NextRequest) {
 
     // 3. Update the existing profile to mark as approved
     console.log(`✍️ Updating profile for user ID: ${userId}`);
+    const accessExpiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .update({
         is_approved: true,
         name: registrationRequest.name,
         access_level: access_level,
-        access_expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+        access_expires_at: accessExpiresAt,
       })
       .eq('id', userId);
 
@@ -97,6 +98,46 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: profileError.message || 'Error creating profile' }, { status: 500 });
     }
     console.log('✅ Profile updated successfully.');
+
+    if (registrationRequest.company_name && registrationRequest.company_name.trim() !== '') {
+      const { data: existingTeam } = await supabaseAdmin
+        .from('teams')
+        .select('id')
+        .ilike('name', registrationRequest.company_name)
+        .single();
+
+      let teamId: string;
+
+      if (existingTeam) {
+        teamId = existingTeam.id;
+      } else {
+        const { data: newTeam, error: newTeamError } = await supabaseAdmin
+          .from('teams')
+          .insert({
+            name: registrationRequest.company_name,
+            access_level: access_level,
+            access_expires_at: accessExpiresAt,
+          })
+          .select('id')
+          .single();
+
+        if (newTeamError || !newTeam) {
+          console.error('Error creating team:', newTeamError);
+          return NextResponse.json({ success: false, message: newTeamError?.message || 'Error creating team' }, { status: 500 });
+        }
+
+        teamId = newTeam.id;
+      }
+
+      const { error: teamAssignError } = await supabaseAdmin
+        .from('profiles')
+        .update({ team_id: teamId })
+        .eq('id', userId);
+
+      if (teamAssignError) {
+        console.error('Error assigning team to profile:', teamAssignError);
+      }
+    }
 
     // 4. Delete the registration request
     const { error: deleteError } = await supabaseAdmin

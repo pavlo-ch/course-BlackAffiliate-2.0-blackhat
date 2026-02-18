@@ -21,6 +21,19 @@ export interface User {
   first_device_info?: Record<string, string> | null;
   last_fingerprint?: string | null;
   last_device_info?: Record<string, string> | null;
+  team_id?: string | null;
+  team_name?: string | null;
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  notes?: string | null;
+  access_level: number;
+  access_expires_at?: string | null;
+  created_at: string;
+  members_count: number;
+  members: { id: string; email: string; name: string }[];
 }
 
 export interface LoginCredentials {

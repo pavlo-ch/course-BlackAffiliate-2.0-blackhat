@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, Fragment } from 'react';
 import Link from 'next/link';
-import { User, Users, Plus, Trash2, Mail, Shield, Calendar, ArrowLeft, Clock, Check, X, Bell, Edit3, Megaphone, Key, Loader2, Circle, DollarSign, ExternalLink, Wallet, MessageSquare, ShoppingBag, ChevronDown, Smartphone, Monitor, AlertTriangle, RefreshCw } from 'lucide-react';
+import { User, Users, Plus, Trash2, Mail, Shield, Calendar, ArrowLeft, Clock, Check, X, Bell, Edit3, Megaphone, Key, Loader2, Circle, DollarSign, ExternalLink, Wallet, MessageSquare, ShoppingBag, ChevronDown, Smartphone, Monitor, AlertTriangle, RefreshCw, History } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { User as UserType, RegistrationRequest, ACCESS_LEVELS, AccessLevel, Team } from '@/types/auth';
 import { AnnouncementWithReadStatus, CreateAnnouncementRequest } from '@/types/announcements';
@@ -125,7 +125,7 @@ export default function AdminPanel() {
   const [registrationRequests, setRegistrationRequests] = useState<RegistrationRequest[]>([]);
   const [users, setUsers] = useState<UserType[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [activeTab, setActiveTab] = useState<'users' | 'requests' | 'announcements' | 'transactions' | 'blacklist' | 'services' | 'purchases' | 'teams'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'requests' | 'announcements' | 'transactions' | 'blacklist' | 'services' | 'purchases'>('users');
   const [newUser, setNewUser] = useState({
     email: '',
     password: '',
@@ -225,6 +225,9 @@ export default function AdminPanel() {
   const [teamForm, setTeamForm] = useState({ name: '', notes: '', access_level: 1, access_expires_at: '' });
   const [addingMemberTeamId, setAddingMemberTeamId] = useState<string | null>(null);
   const [memberSearchEmail, setMemberSearchEmail] = useState('');
+  const [editingTeamExpiry, setEditingTeamExpiry] = useState<string | null>(null);
+  const [teamExpiryValue, setTeamExpiryValue] = useState('');
+  const [viewingTeamTransactions, setViewingTeamTransactions] = useState<string | null>(null);
 
   const loadUsers = useCallback(async () => {
     setIsLoadingUsers(true);
@@ -516,6 +519,26 @@ export default function AdminPanel() {
     }
   };
 
+  const handleSetTeamExpiry = async (teamId: string, memberIds: string[], expiryDate: string) => {
+    try {
+      const isoDate = expiryDate ? new Date(expiryDate).toISOString() : null;
+      await Promise.all(
+        memberIds.map(userId =>
+          fetch('/api/admin/users', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: userId, access_expires_at: isoDate }),
+          })
+        )
+      );
+      await loadUsers();
+      setEditingTeamExpiry(null);
+      setTeamExpiryValue('');
+    } catch (error) {
+      console.error('Error setting team expiry:', error);
+    }
+  };
+
   const handleDeleteTeam = async (teamId: string) => {
     if (!confirm('Delete this team? Members will be unassigned.')) return;
     try {
@@ -602,6 +625,7 @@ export default function AdminPanel() {
     loadAnnouncements();
     loadTransactions();
     loadBlacklist();
+    loadTeams();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -610,10 +634,8 @@ export default function AdminPanel() {
       loadServices();
     } else if (activeTab === 'purchases') {
       loadPurchases();
-    } else if (activeTab === 'teams') {
-      loadTeams();
     }
-  }, [activeTab, loadServices, loadPurchases, loadTeams]);
+  }, [activeTab, loadServices, loadPurchases]);
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -910,6 +932,26 @@ export default function AdminPanel() {
       alert('Network error');
     } finally {
       setIsUpdatingReminder(false);
+    }
+  };
+
+  const handleAssignTeam = async (userId: string, teamName: string) => {
+    if (!teamName.trim()) return;
+    try {
+      const response = await fetch('/api/admin/teams/assign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, teamName }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        alert('Team assigned successfully');
+        loadUsers();
+      } else {
+        alert(data.message || 'Error assigning team');
+      }
+    } catch (error) {
+      console.error('Error assigning team:', error);
     }
   };
 
@@ -1440,17 +1482,7 @@ export default function AdminPanel() {
                 <Shield className="w-4 h-4 text-red-500" />
                 Blacklist ({blacklist.length})
               </button>
-              <button
-                onClick={() => setActiveTab('teams')}
-                className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
-                  activeTab === 'teams'
-                    ? 'bg-primary text-white'
-                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                }`}
-              >
-                <Users className="w-4 h-4" />
-                Teams ({teams.length})
-              </button>
+
               <button
                 onClick={() => setActiveTab('services')}
                 className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
@@ -1582,520 +1614,727 @@ export default function AdminPanel() {
           )}
 
           {activeTab === 'users' && (
-            <div className="space-y-4">
-              {isLoadingUsers ? (
+            <div className="space-y-6">
+              {isLoadingUsers || isLoadingTeams ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                  <span className="ml-3 text-gray-400">Loading users...</span>
-                </div>
-              ) : users.length === 0 ? (
-                <div className="text-center py-8">
-                  <User className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-                  <p className="text-gray-400">No users found</p>
+                  <span className="ml-3 text-gray-400">Loading...</span>
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-lg border border-gray-700">
-                  <table className="w-full text-left border-collapse bg-gray-800/50">
-                    <thead>
-                      <tr className="border-b border-gray-700 text-gray-400 text-sm bg-gray-900/50">
-                        <th className="p-4 font-medium">User</th>
-                        <th className="p-4 font-medium">Role</th>
-                        <th className="p-4 font-medium">Access Level</th>
-                        <th className="p-4 font-medium">Status</th>
-                        <th className="p-4 font-medium">Expires</th>
-                        <th className="p-4 font-medium text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-700">
-                      {users.map((userItem) => (
-                        <Fragment key={userItem.id}>
-                          <tr className="hover:bg-gray-700/30 transition-colors">
-                            <td className="p-4">
-                              <div className="flex items-center gap-3">
-                                <div className="bg-gray-700 p-2 rounded-lg">
-                                  <User className="w-4 h-4 text-gray-300" />
-                                </div>
-                                <div>
-                                  <div className="font-medium text-white">{userItem.email}</div>
-                                  {userItem.name && <div className="text-sm text-gray-400">{userItem.name}</div>}
-                                  {userItem.team_name && (
-                                    <div className="text-xs text-blue-400 flex items-center gap-1 mt-0.5">
-                                      <Users className="w-3 h-3" />
-                                      {userItem.team_name}
-                                    </div>
+                <>
+                  {/* Teams section */}
+                  {teams.map((team) => {
+                    const teamMembers = users.filter(u => u.team_id === team.id);
+                    const isEditingThisTeam = editingTeam === team.id;
+                    return (
+                      <div key={team.id} className="rounded-lg border border-blue-900/40 overflow-hidden">
+                        {/* Team Header */}
+                        <div className="bg-blue-950/40 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <Users className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                            {isEditingThisTeam ? (
+                              <div className="flex items-center gap-2 flex-1">
+                                <input
+                                  type="text"
+                                  value={teamForm.name}
+                                  onChange={(e) => setTeamForm(prev => ({ ...prev, name: e.target.value }))}
+                                  className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-white flex-1 max-w-[200px]"
+                                  placeholder="Team name"
+                                />
+                                <input
+                                  type="text"
+                                  value={teamForm.notes}
+                                  onChange={(e) => setTeamForm(prev => ({ ...prev, notes: e.target.value }))}
+                                  className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-gray-300 flex-1 max-w-[300px]"
+                                  placeholder="Notes (optional)"
+                                />
+                              </div>
+                            ) : (
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="font-semibold text-blue-200 truncate">{team.name}</span>
+                                  <span className="text-xs text-gray-500">({teamMembers.length} members)</span>
+                                  {team.notes && (
+                                    <span className="text-xs text-gray-500 truncate hidden sm:block">— {team.notes}</span>
                                   )}
+                                  <div className="flex items-center gap-1 ml-2 px-2 py-0.5 bg-blue-900/30 rounded border border-blue-900/50">
+                                    <DollarSign className="w-3 h-3 text-green-400" />
+                                    <span className="text-xs font-mono text-green-300">
+                                      {teamMembers.reduce((sum, m) => sum + (m.balance || 0), 0).toFixed(2)}
+                                    </span>
+                                  </div>
                                 </div>
-                              </div>
-                            </td>
-                            <td className="p-4">
-                              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
-                                userItem.role === 'admin' ? 'bg-primary/20 text-primary' : 'bg-gray-700 text-gray-300'
-                              }`}>
-                                {userItem.role === 'admin' && <Shield className="w-3 h-3" />}
-                                {userItem.role === 'admin' ? 'Admin' : 'User'}
-                              </span>
-                            </td>
-                            <td className="p-4">
-                              {editingUser === userItem.id ? (
-                                <div className="flex items-center gap-2">
-                                  <select
-                                    value={userItem.access_level}
-                                    onChange={(e) => handleUpdateUserAccess(userItem.id, parseInt(e.target.value) as AccessLevel)}
-                                    className="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-xs text-white focus:outline-none focus:ring-2 focus:ring-primary w-32"
-                                  >
-                                    <option value={1}>Basic</option>
-                                    <option value={2}>Premium</option>
-                                    <option value={3}>VIP</option>
-                                    <option value={4}>Without Road Map</option>
-                                    <option value={5}>Blocked</option>
-                                    <option value={6}>Creative Push Only</option>
-                                    <option value={7}>Payment Overdue</option>
-                                  </select>
-                                  <button onClick={() => setEditingUser(null)} className="text-gray-400 hover:text-white">
-                                    <X className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() => setEditingUser(userItem.id)}
-                                  className="group flex items-center gap-1.5 hover:text-blue-400 transition-colors"
-                                >
-                                  <div className={`w-2 h-2 rounded-full ${
-                                    userItem.access_level >= 3 ? 'bg-purple-500' : 
-                                    userItem.access_level === 2 ? 'bg-blue-500' : 'bg-gray-500'
-                                  }`} />
-                                  <span className="text-sm">{ACCESS_LEVELS[userItem.access_level as AccessLevel]?.name || 'Unknown'}</span>
-                                  <Edit3 className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                </button>
                               )}
-                            </td>
-                            <td className="p-4">
-                              <div className="flex flex-col gap-1">
-                                <div className="flex items-center gap-2">
-                                  <Circle className={`w-2 h-2 ${userItem.is_active ? 'text-green-500 fill-green-500' : 'text-gray-500 fill-gray-500'}`} />
-                                  <span className={`text-sm ${userItem.is_active ? 'text-green-400' : 'text-gray-500'}`}>
-                                    {userItem.is_active ? 'Active' : 'Offline'}
-                                  </span>
-                                </div>
-                                {userItem.last_seen && (
-                                  <span className="text-xs text-gray-500">
-                                    {new Date(userItem.last_seen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="p-4">
-                              {editingExpiry === userItem.id ? (
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {/* Team-wide Expires */}
+                            {!isEditingThisTeam && (
+                              editingTeamExpiry === team.id ? (
                                 <div className="flex items-center gap-1">
                                   <input
                                     type="date"
-                                    value={expiryValue}
-                                    onChange={(e) => setExpiryValue(e.target.value)}
-                                    className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white w-28"
+                                    value={teamExpiryValue}
+                                    onChange={(e) => setTeamExpiryValue(e.target.value)}
+                                    className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-white w-30"
                                   />
                                   <button
-                                    onClick={() => handleUpdateUserExpiry(userItem.id, expiryValue ? new Date(expiryValue).toISOString() : null)}
-                                    disabled={isUpdatingExpiry}
-                                    className="text-green-500 hover:text-green-400 p-1"
+                                    onClick={() => handleSetTeamExpiry(team.id, teamMembers.map(m => m.id), teamExpiryValue)}
+                                    className="text-green-400 hover:text-green-300 p-1"
+                                    title="Apply to all members"
                                   >
-                                    <Check className="w-3 h-3" />
+                                    <Check className="w-3.5 h-3.5" />
                                   </button>
                                   <button
-                                    onClick={() => setEditingExpiry(null)}
+                                    onClick={() => { setEditingTeamExpiry(null); setTeamExpiryValue(''); }}
                                     className="text-gray-400 hover:text-white p-1"
                                   >
-                                    <X className="w-3 h-3" />
+                                    <X className="w-3.5 h-3.5" />
                                   </button>
                                 </div>
                               ) : (
-                                <div className="flex items-center gap-2 text-sm">
-                                  <span className={!userItem.access_expires_at ? 'text-green-500' : (new Date(userItem.access_expires_at) < new Date() ? 'text-red-500' : 'text-gray-300')}>
-                                    {userItem.access_expires_at 
-                                      ? new Date(userItem.access_expires_at).toLocaleDateString() 
-                                      : 'Lifetime'}
-                                  </span>
-                                  <button
-                                    onClick={() => {
-                                      setEditingExpiry(userItem.id);
-                                      setExpiryValue(userItem.access_expires_at ? new Date(userItem.access_expires_at).toISOString().split('T')[0] : '');
-                                    }}
-                                    className="text-gray-600 hover:text-blue-400 transition-colors"
-                                  >
-                                    <Edit3 className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              )}
-                            </td>
-                            <td className="p-4 text-right">
-                              <div className="flex justify-end gap-2">
                                 <button
                                   onClick={() => {
-                                    if (expandedUser === userItem.id) {
-                                      setExpandedUser(null);
-                                      // Clear all editing states when closing
-                                      setAdjustingBalance(null);
-                                      setChangingPassword(null);
-                                      setEditingReminder(null);
-                                      setEditingOverdue(null);
-                                    } else {
-                                      setExpandedUser(userItem.id);
-                                    }
+                                    setEditingTeamExpiry(team.id);
+                                    setTeamExpiryValue('');
                                   }}
-                                  className={`p-2 rounded-lg transition-colors relative ${
-                                    expandedUser === userItem.id ? 'bg-gray-700 text-white' : 'hover:bg-gray-700 text-gray-400'
-                                  }`}
-                                  title="More Actions & Details"
+                                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-400 transition-colors px-2 py-1 rounded border border-gray-700 hover:border-blue-700"
+                                  title="Set expiry for all members"
                                 >
-                                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expandedUser === userItem.id ? 'rotate-180' : ''}`} />
-                                  {/* Badge count */}
-                                  {(
-                                    (userItem.payment_reminder ? 1 : 0) + 
-                                    (userItem.overdue_message ? 1 : 0) +
-                                    (userItem.expired_message ? 1 : 0)
-                                  ) > 0 && (
-                                    <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
-                                      {(userItem.payment_reminder ? 1 : 0) + (userItem.overdue_message ? 1 : 0) + (userItem.expired_message ? 1 : 0)}
-                                    </span>
-                                  )}
+                                  <Calendar className="w-3 h-3" />
+                                  Expires for all
+                                </button>
+                              )
+                            )}
+                            {isEditingThisTeam ? (
+                              <>
+                                <button
+                                  onClick={() => handleUpdateTeam(team.id, { name: teamForm.name, notes: teamForm.notes })}
+                                  className="text-green-400 hover:text-green-300 p-1"
+                                  title="Save"
+                                >
+                                  <Check className="w-4 h-4" />
                                 </button>
                                 <button
-                                  onClick={() => handleDeleteUser(userItem.id)}
-                                  disabled={userItem.id === user?.id}
-                                  className="p-2 hover:bg-red-900/30 text-gray-400 hover:text-red-500 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                                  title="Delete User"
+                                  onClick={() => setEditingTeam(null)}
+                                  className="text-gray-400 hover:text-white p-1"
+                                  title="Cancel"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setViewingTeamTransactions(team.id);
+                                    if (transactions.length === 0) loadTransactions();
+                                  }}
+                                  className="text-gray-400 hover:text-purple-400 p-1 transition-colors"
+                                  title="View Transactions"
+                                >
+                                  <History className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setEditingTeam(team.id);
+                                    setTeamForm({ name: team.name, notes: team.notes || '', access_level: team.access_level, access_expires_at: '' });
+                                  }}
+                                  className="text-gray-400 hover:text-blue-400 p-1 transition-colors"
+                                  title="Edit team"
+                                >
+                                  <Edit3 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteTeam(team.id)}
+                                  className="text-gray-500 hover:text-red-400 p-1 transition-colors"
+                                  title="Delete team"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
-                              </div>
-                            </td>
-                          </tr>
-                          
-                          {/* Expanded Details Row */}
-                          {(expandedUser === userItem.id || adjustingBalance === userItem.id || changingPassword === userItem.id || editingReminder === userItem.id || editingOverdue === userItem.id) && (
-                            <tr className="bg-gray-800/30">
-                              <td colSpan={6} className="p-4 border-l-2 border-primary">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                  
-                                  {/* Balance Section */}
-                                  <div className="space-y-2">
-                                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Balance Adjustment</div>
-                                    <div className="flex flex-col gap-2">
-                                      <select
-                                        value={balanceType}
-                                        onChange={(e) => setBalanceType(e.target.value as 'add' | 'set')}
-                                        className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white"
-                                      >
-                                        <option value="add">Add</option>
-                                        <option value="set">Set</option>
-                                      </select>
-                                      <div className="flex gap-2">
-                                        <input
-                                          type="number"
-                                          value={balanceAmount}
-                                          onChange={(e) => {
-                                            if (adjustingBalance !== userItem.id) {
-                                              setAdjustingBalance(userItem.id);
-                                              setBalanceAmount('');
-                                              setBalanceType('add');
-                                            }
-                                            setBalanceAmount(e.target.value)
-                                          }}
-                                          placeholder="Amount"
-                                          className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white"
-                                        />
-                                        <button
-                                          onClick={() => handleAdjustBalance(userItem.id)}
-                                          disabled={isUpdatingBalance || !balanceAmount}
-                                          className="bg-green-600 hover:bg-green-500 text-white rounded px-2 py-1 text-xs"
-                                        >
-                                          <Check className="w-3 h-3" />
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
 
-                                  {/* Password Section */}
-                                  <div className="space-y-2">
-                                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Reset Password</div>
-                                    <div className="flex gap-2">
-                                      <input
-                                        type="password"
-                                        value={newPassword}
-                                        onChange={(e) => {
-                                          if (changingPassword !== userItem.id) {
-                                            setChangingPassword(userItem.id);
-                                            setNewPassword('');
-                                          }
-                                          setNewPassword(e.target.value)
-                                        }}
-                                        placeholder="New Pass"
-                                        className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white"
-                                      />
-                                      <button
-                                        onClick={() => handleChangePassword(userItem.id)}
-                                        disabled={isUpdatingPassword || newPassword.length < 6}
-                                        className="bg-yellow-600 hover:bg-yellow-500 text-white rounded px-2 py-1 text-xs"
-                                      >
-                                        <Key className="w-3 h-3" />
-                                      </button>
-                                    </div>
-                                  </div>
 
-                                  {/* Reminder Section */}
-                                  <div className="space-y-2">
-                                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center justify-between">
-                                      <span>Payment Reminder</span>
-                                      {userItem.payment_reminder && (
-                                        <button onClick={() => handleDeleteReminder(userItem.id)} className="text-red-400 hover:text-red-300">
-                                          <Trash2 className="w-3 h-3" />
-                                        </button>
-                                      )}
-                                    </div>
-                                    <div className="flex gap-2">
-                                      <input
-                                        type="text"
-                                        value={reminderText}
-                                        onChange={(e) => {
-                                          if (editingReminder !== userItem.id) {
-                                            setEditingReminder(userItem.id);
-                                            setReminderText(userItem.payment_reminder || '');
-                                          }
-                                          setReminderText(e.target.value)
-                                        }}
-                                        placeholder={userItem.payment_reminder || "Set reminder..."}
-                                        className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white"
-                                      />
-                                      <button
-                                        onClick={() => handleUpdateReminder(userItem.id)}
-                                        disabled={isUpdatingReminder}
-                                        className="bg-blue-600 hover:bg-blue-500 text-white rounded px-2 py-1 text-xs"
-                                      >
-                                        <Check className="w-3 h-3" />
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                   {/* Overdue Section */}
-                                  <div className="space-y-2">
-                                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center justify-between">
-                                      <span>Overdue Message</span>
-                                      {userItem.overdue_message && (
-                                        <button onClick={() => handleDeleteOverdue(userItem.id)} className="text-red-400 hover:text-red-300">
-                                          <Trash2 className="w-3 h-3" />
-                                        </button>
-                                      )}
-                                    </div>
-                                    <div className="flex gap-2">
-                                      <input
-                                        type="text"
-                                        value={overdueText}
-                                        onChange={(e) => {
-                                          if (editingOverdue !== userItem.id) {
-                                            setEditingOverdue(userItem.id);
-                                            setOverdueText(userItem.overdue_message || '');
-                                          }
-                                          setOverdueText(e.target.value)
-                                        }}
-                                        placeholder={userItem.overdue_message || "Set message..."}
-                                        className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white"
-                                      />
-                                      <button
-                                        onClick={() => handleUpdateOverdue(userItem.id)}
-                                        disabled={isUpdatingOverdue}
-                                        className="bg-red-600 hover:bg-red-500 text-white rounded px-2 py-1 text-xs"
-                                      >
-                                        <Check className="w-3 h-3" />
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                  {/* Expired Section */}
-                                  <div className="space-y-2">
-                                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center justify-between">
-                                      <span>Expired Message</span>
-                                      {userItem.expired_message && (
-                                        <button onClick={() => handleClearExpired(userItem.id)} className="text-red-400 hover:text-red-300">
-                                          <Trash2 className="w-3 h-3" />
-                                        </button>
-                                      )}
-                                    </div>
-                                    <div className="flex gap-2">
-                                      <input
-                                        type="text"
-                                        value={expiredText}
-                                        onChange={(e) => {
-                                          if (editingExpired !== userItem.id) {
-                                            setEditingExpired(userItem.id);
-                                            setExpiredText(userItem.expired_message || '');
-                                          }
-                                          setExpiredText(e.target.value)
-                                        }}
-                                        placeholder={userItem.expired_message || "Set expired message..."}
-                                        className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white"
-                                      />
-                                      <button
-                                        onClick={() => handleUpdateExpired(userItem.id)}
-                                        disabled={isUpdatingExpired}
-                                        className="bg-orange-600 hover:bg-orange-500 text-white rounded px-2 py-1 text-xs"
-                                      >
-                                        <Check className="w-3 h-3" />
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                </div>
-
-                                {/* Device Info Section */}
-                                <div className="mt-4 pt-4 border-t border-gray-700">
-                                  <div className="flex items-center justify-between mb-3">
-                                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
-                                      <Monitor className="w-3.5 h-3.5" />
-                                      <span>Device Binding</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      {(userItem.device_token || userItem.first_fingerprint) && (
-                                        <button
-                                          onClick={() => handleResetDevice(userItem.id)}
-                                          disabled={resettingDevice === userItem.id}
-                                          className="inline-flex items-center gap-1 text-xs text-yellow-500 hover:text-yellow-400 transition-colors"
-                                        >
-                                          <RefreshCw className={`w-3 h-3 ${resettingDevice === userItem.id ? 'animate-spin' : ''}`} />
-                                          Reset Device
-                                        </button>
-                                      )}
-                                      <button
-                                        onClick={() => loadDeviceAttempts(userItem.id)}
-                                        disabled={loadingDeviceAttempts === userItem.id}
-                                        className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
-                                      >
-                                        {loadingDeviceAttempts === userItem.id ? (
-                                          <Loader2 className="w-3 h-3 animate-spin" />
+                        {/* Team Members Table */}
+                        {teamMembers.length > 0 ? (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse bg-gray-800/30">
+                              <thead>
+                                <tr className="border-b border-gray-700/50 text-gray-500 text-xs bg-gray-900/30">
+                                  <th className="p-3 font-medium">User</th>
+                                  <th className="p-3 font-medium">Role</th>
+                                  <th className="p-3 font-medium">Access Level</th>
+                                  <th className="p-3 font-medium">Status</th>
+                                  <th className="p-3 font-medium">Expires</th>
+                                  <th className="p-3 font-medium">Created</th>
+                                  <th className="p-3 font-medium text-right">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-700/30">
+                                {teamMembers.map((userItem) => (
+                                  <Fragment key={userItem.id}>
+                                    <tr className="hover:bg-gray-700/20 transition-colors">
+                                      <td className="p-3">
+                                        <div className="flex items-center gap-2">
+                                          <div className="bg-gray-700 p-1.5 rounded">
+                                            <User className="w-3.5 h-3.5 text-gray-300" />
+                                          </div>
+                                          <div>
+                                            <div className="text-sm font-medium text-white">{userItem.email}</div>
+                                            {userItem.name && <div className="text-xs text-gray-400">{userItem.name}</div>}
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td className="p-3">
+                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${userItem.role === 'admin' ? 'bg-primary/20 text-primary' : 'bg-gray-700 text-gray-300'}`}>
+                                          {userItem.role === 'admin' && <Shield className="w-3 h-3" />}
+                                          {userItem.role === 'admin' ? 'Admin' : 'User'}
+                                        </span>
+                                      </td>
+                                      <td className="p-3">
+                                        {editingUser === userItem.id ? (
+                                          <div className="flex items-center gap-1">
+                                            <select
+                                              value={userItem.access_level}
+                                              onChange={(e) => handleUpdateUserAccess(userItem.id, parseInt(e.target.value) as AccessLevel)}
+                                              className="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-xs text-white focus:outline-none w-28"
+                                            >
+                                              <option value={1}>Basic</option>
+                                              <option value={2}>Premium</option>
+                                              <option value={3}>VIP</option>
+                                              <option value={4}>Without Road Map</option>
+                                              <option value={5}>Blocked</option>
+                                              <option value={6}>Creative Push Only</option>
+                                              <option value={7}>Payment Overdue</option>
+                                            </select>
+                                            <button onClick={() => setEditingUser(null)} className="text-gray-400 hover:text-white"><X className="w-3 h-3" /></button>
+                                          </div>
                                         ) : (
-                                          <AlertTriangle className="w-3 h-3" />
+                                          <button onClick={() => setEditingUser(userItem.id)} className="group flex items-center gap-1 text-xs hover:text-blue-400 transition-colors">
+                                            <div className={`w-1.5 h-1.5 rounded-full ${userItem.access_level >= 3 ? 'bg-purple-500' : userItem.access_level === 2 ? 'bg-blue-500' : 'bg-gray-500'}`} />
+                                            {ACCESS_LEVELS[userItem.access_level as AccessLevel]?.name || 'Unknown'}
+                                            <Edit3 className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                          </button>
                                         )}
-                                        Load Attempts
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                  <div className="space-y-2 mb-3">
-                                    <div className="flex items-center gap-2 text-xs">
-                                      <span className="text-gray-500">Cookie Token:</span>
-                                      {userItem.device_token ? (
-                                        <span className="text-green-400 font-medium">Active</span>
-                                      ) : (
-                                        <span className="text-gray-600">Not set</span>
-                                      )}
-                                    </div>
-
-                                    {userItem.first_fingerprint ? (
-                                      <div className="bg-gray-900/50 rounded-lg p-3">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          {(userItem.first_device_info as any)?.device_type === 'Mobile' ? (
-                                            <Smartphone className="w-4 h-4 text-blue-400" />
-                                          ) : (
-                                            <Monitor className="w-4 h-4 text-blue-400" />
-                                          )}
-                                          <span className="text-xs text-blue-400 font-medium">Registration Device</span>
+                                      </td>
+                                      <td className="p-3">
+                                        <div className="flex items-center gap-1.5">
+                                          <Circle className={`w-1.5 h-1.5 ${userItem.is_active ? 'text-green-500 fill-green-500' : 'text-gray-500 fill-gray-500'}`} />
+                                          <span className={`text-xs ${userItem.is_active ? 'text-green-400' : 'text-gray-500'}`}>{userItem.is_active ? 'Active' : 'Offline'}</span>
                                         </div>
-                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
-                                          {(userItem.first_device_info as any)?.browser && (
-                                            <div><span className="text-gray-500">Browser:</span> <span className="text-gray-300">{(userItem.first_device_info as any).browser}</span></div>
-                                          )}
-                                          {(userItem.first_device_info as any)?.os && (
-                                            <div><span className="text-gray-500">OS:</span> <span className="text-gray-300">{(userItem.first_device_info as any).os}</span></div>
-                                          )}
-                                          {(userItem.first_device_info as any)?.device_type && (
-                                            <div><span className="text-gray-500">Type:</span> <span className="text-gray-300">{(userItem.first_device_info as any).device_type}</span></div>
-                                          )}
-                                          {(userItem.first_device_info as any)?.screen && (
-                                            <div><span className="text-gray-500">Screen:</span> <span className="text-gray-300">{(userItem.first_device_info as any).screen}</span></div>
-                                          )}
-                                          {(userItem.first_device_info as any)?.timezone && (
-                                            <div><span className="text-gray-500">TZ:</span> <span className="text-gray-300">{(userItem.first_device_info as any).timezone}</span></div>
-                                          )}
-                                          <div><span className="text-gray-500">FP:</span> <span className="text-gray-300 font-mono">{userItem.first_fingerprint}</span></div>
-                                        </div>
-                                      </div>
-                                    ) : null}
-
-                                    {userItem.last_fingerprint && userItem.last_fingerprint !== userItem.first_fingerprint ? (
-                                      <div className="bg-gray-900/50 rounded-lg p-3">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          {(userItem.last_device_info as any)?.device_type === 'Mobile' ? (
-                                            <Smartphone className="w-4 h-4 text-green-400" />
-                                          ) : (
-                                            <Monitor className="w-4 h-4 text-green-400" />
-                                          )}
-                                          <span className="text-xs text-green-400 font-medium">Last Login Device</span>
-                                        </div>
-                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
-                                          {(userItem.last_device_info as any)?.browser && (
-                                            <div><span className="text-gray-500">Browser:</span> <span className="text-gray-300">{(userItem.last_device_info as any).browser}</span></div>
-                                          )}
-                                          {(userItem.last_device_info as any)?.os && (
-                                            <div><span className="text-gray-500">OS:</span> <span className="text-gray-300">{(userItem.last_device_info as any).os}</span></div>
-                                          )}
-                                          {(userItem.last_device_info as any)?.device_type && (
-                                            <div><span className="text-gray-500">Type:</span> <span className="text-gray-300">{(userItem.last_device_info as any).device_type}</span></div>
-                                          )}
-                                          {(userItem.last_device_info as any)?.screen && (
-                                            <div><span className="text-gray-500">Screen:</span> <span className="text-gray-300">{(userItem.last_device_info as any).screen}</span></div>
-                                          )}
-                                          {(userItem.last_device_info as any)?.timezone && (
-                                            <div><span className="text-gray-500">TZ:</span> <span className="text-gray-300">{(userItem.last_device_info as any).timezone}</span></div>
-                                          )}
-                                          <div><span className="text-gray-500">FP:</span> <span className="text-gray-300 font-mono">{userItem.last_fingerprint}</span></div>
-                                        </div>
-                                      </div>
-                                    ) : null}
-
-                                    {!userItem.first_fingerprint && !userItem.device_token && (
-                                      <div className="text-xs text-gray-500">No device registered yet. Will be set on next login.</div>
-                                    )}
-                                  </div>
-
-                                  {deviceAttempts[userItem.id] && deviceAttempts[userItem.id].length > 0 && (
-                                    <div className="space-y-2">
-                                      <div className="text-xs font-semibold text-red-400 flex items-center gap-1">
-                                        <AlertTriangle className="w-3 h-3" />
-                                        Blocked Login Attempts ({deviceAttempts[userItem.id].length})
-                                      </div>
-                                      <div className="max-h-40 overflow-y-auto space-y-1">
-                                        {deviceAttempts[userItem.id].map((attempt: any, idx: number) => (
-                                          <div key={attempt.id || idx} className="bg-red-900/20 border border-red-900/30 rounded p-2 text-xs">
-                                            <div className="flex items-center justify-between mb-1">
-                                              <span className="text-red-400 font-medium">
-                                                {new Date(attempt.created_at).toLocaleString()}
+                                      </td>
+                                      <td className="p-3">
+                                        {editingExpiry === userItem.id ? (
+                                          <div className="flex items-center gap-1">
+                                            <input type="date" value={expiryValue} onChange={(e) => setExpiryValue(e.target.value)} className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white w-28" />
+                                            <button onClick={() => handleUpdateUserExpiry(userItem.id, expiryValue ? new Date(expiryValue).toISOString() : null)} disabled={isUpdatingExpiry} className="text-green-500 hover:text-green-400 p-1"><Check className="w-3 h-3" /></button>
+                                            <button onClick={() => setEditingExpiry(null)} className="text-gray-400 hover:text-white p-1"><X className="w-3 h-3" /></button>
+                                          </div>
+                                        ) : (
+                                          <div className="flex items-center gap-1.5 text-xs">
+                                            <span className={!userItem.access_expires_at ? 'text-green-500' : (new Date(userItem.access_expires_at) < new Date() ? 'text-red-500' : 'text-gray-300')}>
+                                              {userItem.access_expires_at ? new Date(userItem.access_expires_at).toLocaleDateString() : 'Lifetime'}
+                                            </span>
+                                            <button onClick={() => { setEditingExpiry(userItem.id); setExpiryValue(userItem.access_expires_at ? new Date(userItem.access_expires_at).toISOString().split('T')[0] : ''); }} className="text-gray-600 hover:text-blue-400 transition-colors"><Edit3 className="w-3 h-3" /></button>
+                                          </div>
+                                        )}
+                                      </td>
+                                      <td className="p-3">
+                                        <span className="text-xs text-gray-500">
+                                          {userItem.created_at ? new Date(userItem.created_at).toLocaleDateString() : '—'}
+                                        </span>
+                                      </td>
+                                      <td className="p-3 text-right">
+                                        <div className="flex justify-end gap-1">
+                                          <button
+                                            onClick={() => {
+                                              if (expandedUser === userItem.id) {
+                                                setExpandedUser(null);
+                                                setAdjustingBalance(null);
+                                                setChangingPassword(null);
+                                                setEditingReminder(null);
+                                                setEditingOverdue(null);
+                                              } else {
+                                                setExpandedUser(userItem.id);
+                                              }
+                                            }}
+                                            className={`p-1.5 rounded transition-colors relative ${expandedUser === userItem.id ? 'bg-gray-700 text-white' : 'hover:bg-gray-700 text-gray-400'}`}
+                                            title="More Actions"
+                                          >
+                                            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expandedUser === userItem.id ? 'rotate-180' : ''}`} />
+                                            {((userItem.payment_reminder ? 1 : 0) + (userItem.overdue_message ? 1 : 0) + (userItem.expired_message ? 1 : 0)) > 0 && (
+                                              <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                                                {(userItem.payment_reminder ? 1 : 0) + (userItem.overdue_message ? 1 : 0) + (userItem.expired_message ? 1 : 0)}
                                               </span>
-                                              <span className="text-gray-500">IP: {attempt.ip_address || 'unknown'}</span>
+                                            )}
+                                          </button>
+                                          <button
+                                            onClick={() => handleRemoveMember(userItem.id)}
+                                            className="p-1.5 hover:bg-orange-900/30 text-gray-400 hover:text-orange-400 rounded transition-colors"
+                                            title="Remove from team"
+                                          >
+                                            <Users className="w-4 h-4" />
+                                          </button>
+                                          <button
+                                            onClick={() => handleDeleteUser(userItem.id)}
+                                            disabled={userItem.id === user?.id}
+                                            className="p-1.5 hover:bg-red-900/30 text-gray-400 hover:text-red-500 rounded transition-colors disabled:opacity-30"
+                                            title="Delete User"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                    {/* Expanded Details Row */}
+                                    {(expandedUser === userItem.id || adjustingBalance === userItem.id || changingPassword === userItem.id || editingReminder === userItem.id || editingOverdue === userItem.id) && (
+                                      <tr className="bg-gray-800/30">
+                                        <td colSpan={6} className="p-4 border-l-2 border-blue-800">
+                                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                            {/* Balance Section */}
+                                            <div className="space-y-2">
+                                              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Balance Adjustment</div>
+                                              <div className="flex flex-col gap-2">
+                                                <select value={balanceType} onChange={(e) => setBalanceType(e.target.value as 'add' | 'set')} className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white">
+                                                  <option value="add">Add</option>
+                                                  <option value="set">Set</option>
+                                                </select>
+                                                <div className="flex gap-2">
+                                                  <input type="number" value={balanceAmount} onChange={(e) => { if (adjustingBalance !== userItem.id) { setAdjustingBalance(userItem.id); setBalanceAmount(''); setBalanceType('add'); } setBalanceAmount(e.target.value) }} placeholder="Amount" className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white" />
+                                                  <button onClick={() => handleAdjustBalance(userItem.id)} disabled={isUpdatingBalance || !balanceAmount} className="bg-green-600 hover:bg-green-500 text-white rounded px-2 py-1 text-xs"><Check className="w-3 h-3" /></button>
+                                                </div>
+                                              </div>
                                             </div>
-                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-1 text-gray-400">
-                                              {attempt.device_info?.browser && <span>Browser: {attempt.device_info.browser}</span>}
-                                              {attempt.device_info?.os && <span>OS: {attempt.device_info.os}</span>}
-                                              {attempt.device_info?.device_type && <span>Type: {attempt.device_info.device_type}</span>}
-                                              {attempt.device_info?.screen && <span>Screen: {attempt.device_info.screen}</span>}
-                                              {attempt.device_info?.timezone && <span>TZ: {attempt.device_info.timezone}</span>}
-                                              <span className="font-mono">FP: {attempt.fingerprint}</span>
+                                            {/* Password Section */}
+                                            <div className="space-y-2">
+                                              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Reset Password</div>
+                                              <div className="flex gap-2">
+                                                <input type="password" value={newPassword} onChange={(e) => { if (changingPassword !== userItem.id) { setChangingPassword(userItem.id); setNewPassword(''); } setNewPassword(e.target.value) }} placeholder="New Pass" className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white" />
+                                                <button onClick={() => handleChangePassword(userItem.id)} disabled={isUpdatingPassword || newPassword.length < 6} className="bg-yellow-600 hover:bg-yellow-500 text-white rounded px-2 py-1 text-xs"><Key className="w-3 h-3" /></button>
+                                              </div>
+                                            </div>
+                                            {/* Team Assignment */}
+                                            <div className="space-y-2">
+                                              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Move to Team</div>
+                                              <form onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); handleAssignTeam(userItem.id, fd.get('teamName') as string); }} className="flex gap-2">
+                                                <input name="teamName" type="text" defaultValue={userItem.team_name || ''} placeholder="Team Name" className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white" />
+                                                <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white rounded px-2 py-1 text-xs"><Check className="w-3 h-3" /></button>
+                                              </form>
+                                            </div>
+                                            {/* Reminder Section */}
+                                            <div className="space-y-2">
+                                              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center justify-between">
+                                                <span>Payment Reminder</span>
+                                                {userItem.payment_reminder && (<button onClick={() => handleDeleteReminder(userItem.id)} className="text-red-400 hover:text-red-300"><Trash2 className="w-3 h-3" /></button>)}
+                                              </div>
+                                              <div className="flex gap-2">
+                                                <input type="text" value={reminderText} onChange={(e) => { if (editingReminder !== userItem.id) { setEditingReminder(userItem.id); setReminderText(userItem.payment_reminder || ''); } setReminderText(e.target.value) }} placeholder={userItem.payment_reminder || "Set reminder..."} className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white" />
+                                                <button onClick={() => handleUpdateReminder(userItem.id)} disabled={isUpdatingReminder} className="bg-blue-600 hover:bg-blue-500 text-white rounded px-2 py-1 text-xs"><Check className="w-3 h-3" /></button>
+                                              </div>
+                                            </div>
+                                            {/* Overdue Section */}
+                                            <div className="space-y-2">
+                                              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center justify-between">
+                                                <span>Overdue Message</span>
+                                                {userItem.overdue_message && (<button onClick={() => handleDeleteOverdue(userItem.id)} className="text-red-400 hover:text-red-300"><Trash2 className="w-3 h-3" /></button>)}
+                                              </div>
+                                              <div className="flex gap-2">
+                                                <input type="text" value={overdueText} onChange={(e) => { if (editingOverdue !== userItem.id) { setEditingOverdue(userItem.id); setOverdueText(userItem.overdue_message || ''); } setOverdueText(e.target.value) }} placeholder={userItem.overdue_message || "Set message..."} className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white" />
+                                                <button onClick={() => handleUpdateOverdue(userItem.id)} disabled={isUpdatingOverdue} className="bg-red-600 hover:bg-red-500 text-white rounded px-2 py-1 text-xs"><Check className="w-3 h-3" /></button>
+                                              </div>
+                                            </div>
+                                            {/* Expired Section */}
+                                            <div className="space-y-2">
+                                              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center justify-between">
+                                                <span>Expired Message</span>
+                                                {userItem.expired_message && (<button onClick={() => handleClearExpired(userItem.id)} className="text-red-400 hover:text-red-300"><Trash2 className="w-3 h-3" /></button>)}
+                                              </div>
+                                              <div className="flex gap-2">
+                                                <input type="text" value={expiredText} onChange={(e) => { if (editingExpired !== userItem.id) { setEditingExpired(userItem.id); setExpiredText(userItem.expired_message || ''); } setExpiredText(e.target.value) }} placeholder={userItem.expired_message || "Set expired message..."} className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white" />
+                                                <button onClick={() => handleUpdateExpired(userItem.id)} disabled={isUpdatingExpired} className="bg-orange-600 hover:bg-orange-500 text-white rounded px-2 py-1 text-xs"><Check className="w-3 h-3" /></button>
+                                              </div>
                                             </div>
                                           </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
+                                          {/* Device Info */}
+                                          <div className="mt-4 pt-4 border-t border-gray-700">
+                                            <div className="flex items-center justify-between mb-3">
+                                              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                                                <Monitor className="w-3.5 h-3.5" />
+                                                <span>Device Binding</span>
+                                              </div>
+                                              <div className="flex items-center gap-2">
+                                                {(userItem.device_token || userItem.first_fingerprint) && (
+                                                  <button onClick={() => handleResetDevice(userItem.id)} disabled={resettingDevice === userItem.id} className="inline-flex items-center gap-1 text-xs text-yellow-500 hover:text-yellow-400 transition-colors">
+                                                    <RefreshCw className={`w-3 h-3 ${resettingDevice === userItem.id ? 'animate-spin' : ''}`} />
+                                                    Reset Device
+                                                  </button>
+                                                )}
+                                                <button onClick={() => loadDeviceAttempts(userItem.id)} disabled={loadingDeviceAttempts === userItem.id} className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors">
+                                                  {loadingDeviceAttempts === userItem.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <AlertTriangle className="w-3 h-3" />}
+                                                  Load Attempts
+                                                </button>
+                                              </div>
+                                            </div>
+                                            {!userItem.first_fingerprint && !userItem.device_token && (
+                                              <div className="text-xs text-gray-500">No device registered yet.</div>
+                                            )}
+                                            {deviceAttempts[userItem.id] && deviceAttempts[userItem.id].length > 0 && (
+                                              <div className="space-y-1 max-h-40 overflow-y-auto">
+                                                <div className="text-xs font-semibold text-red-400 flex items-center gap-1 mb-1">
+                                                  <AlertTriangle className="w-3 h-3" />
+                                                  Blocked Login Attempts ({deviceAttempts[userItem.id].length})
+                                                </div>
+                                                {deviceAttempts[userItem.id].map((attempt: any, idx: number) => (
+                                                  <div key={attempt.id || idx} className="bg-red-900/20 border border-red-900/30 rounded p-2 text-xs">
+                                                    <div className="flex items-center justify-between mb-1">
+                                                      <span className="text-red-400 font-medium">{new Date(attempt.created_at).toLocaleString()}</span>
+                                                      <span className="text-gray-500">IP: {attempt.ip_address || 'unknown'}</span>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-1 text-gray-400">
+                                                      {attempt.device_info?.browser && <span>Browser: {attempt.device_info.browser}</span>}
+                                                      {attempt.device_info?.os && <span>OS: {attempt.device_info.os}</span>}
+                                                      {attempt.device_info?.device_type && <span>Type: {attempt.device_info.device_type}</span>}
+                                                    </div>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </Fragment>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className="p-4 text-center text-xs text-gray-600">No members in this team yet</div>
+                        )}
 
-                                  {deviceAttempts[userItem.id] && deviceAttempts[userItem.id].length === 0 && (
-                                    <div className="text-xs text-gray-500">No blocked login attempts.</div>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
+                        {/* Add member to team */}
+                        <div className="bg-gray-900/30 px-4 py-2 border-t border-gray-700/30">
+                          {addingMemberTeamId === team.id ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="email"
+                                value={memberSearchEmail}
+                                onChange={(e) => setMemberSearchEmail(e.target.value)}
+                                placeholder="User email to add..."
+                                className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white"
+                              />
+                              <button
+                                onClick={() => {
+                                  const found = users.find(u => u.email.toLowerCase() === memberSearchEmail.toLowerCase());
+                                  if (found) handleAddMember(team.id, found.id);
+                                  else alert('User not found');
+                                }}
+                                className="bg-blue-600 hover:bg-blue-500 text-white rounded px-2 py-1 text-xs"
+                              >
+                                Add
+                              </button>
+                              <button onClick={() => { setAddingMemberTeamId(null); setMemberSearchEmail(''); }} className="text-gray-400 hover:text-white text-xs">Cancel</button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setAddingMemberTeamId(team.id)}
+                              className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors"
+                            >
+                              <Plus className="w-3 h-3" />
+                              Add member
+                            </button>
                           )}
-                        </Fragment>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Create New Team */}
+                  {showTeamForm ? (
+                    <div className="rounded-lg border border-dashed border-gray-600 p-4 bg-gray-800/30">
+                      <h3 className="text-sm font-semibold text-gray-300 mb-3">New Team</h3>
+                      <div className="flex flex-wrap gap-3">
+                        <input
+                          type="text"
+                          value={teamForm.name}
+                          onChange={(e) => setTeamForm(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="Team name *"
+                          className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm text-white flex-1 min-w-[150px]"
+                        />
+                        <input
+                          type="text"
+                          value={teamForm.notes}
+                          onChange={(e) => setTeamForm(prev => ({ ...prev, notes: e.target.value }))}
+                          placeholder="Notes (optional)"
+                          className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm text-gray-300 flex-1 min-w-[200px]"
+                        />
+                        <div className="flex gap-2">
+                          <button onClick={handleCreateTeam} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm">Create</button>
+                          <button onClick={() => { setShowTeamForm(false); setTeamForm({ name: '', notes: '', access_level: 1, access_expires_at: '' }); }} className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded text-sm">Cancel</button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setShowTeamForm(true)}
+                      className="w-full py-3 rounded-lg border border-dashed border-gray-700 text-gray-500 hover:text-blue-400 hover:border-blue-700 transition-colors flex items-center justify-center gap-2 text-sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create New Team
+                    </button>
+                  )}
+
+                  {/* Users without a team */}
+                  {(() => {
+                    const unassigned = users.filter(u => !u.team_id);
+                    if (unassigned.length === 0) return null;
+                    return (
+                      <div className="rounded-lg border border-gray-700/50 overflow-hidden">
+                        <div className="bg-gray-800/50 px-4 py-3 flex items-center gap-2">
+                          <User className="w-4 h-4 text-gray-500" />
+                          <span className="text-sm font-medium text-gray-400">Without Team</span>
+                          <span className="text-xs text-gray-600">({unassigned.length})</span>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left border-collapse bg-gray-800/20">
+                            <thead>
+                              <tr className="border-b border-gray-700/50 text-gray-500 text-xs bg-gray-900/20">
+                                <th className="p-3 font-medium">User</th>
+                                <th className="p-3 font-medium">Role</th>
+                                <th className="p-3 font-medium">Access Level</th>
+                                <th className="p-3 font-medium">Status</th>
+                                <th className="p-3 font-medium">Expires</th>
+                                <th className="p-3 font-medium">Created</th>
+                                <th className="p-3 font-medium text-right">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-700/30">
+                              {unassigned.map((userItem) => (
+                                <Fragment key={userItem.id}>
+                                  <tr className="hover:bg-gray-700/20 transition-colors">
+                                    <td className="p-3">
+                                      <div className="flex items-center gap-2">
+                                        <div className="bg-gray-700 p-1.5 rounded">
+                                          <User className="w-3.5 h-3.5 text-gray-300" />
+                                        </div>
+                                        <div>
+                                          <div className="text-sm font-medium text-white">{userItem.email}</div>
+                                          {userItem.name && <div className="text-xs text-gray-400">{userItem.name}</div>}
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="p-3">
+                                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${userItem.role === 'admin' ? 'bg-primary/20 text-primary' : 'bg-gray-700 text-gray-300'}`}>
+                                        {userItem.role === 'admin' && <Shield className="w-3 h-3" />}
+                                        {userItem.role === 'admin' ? 'Admin' : 'User'}
+                                      </span>
+                                    </td>
+                                    <td className="p-3">
+                                      {editingUser === userItem.id ? (
+                                        <div className="flex items-center gap-1">
+                                          <select value={userItem.access_level} onChange={(e) => handleUpdateUserAccess(userItem.id, parseInt(e.target.value) as AccessLevel)} className="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-xs text-white focus:outline-none w-28">
+                                            <option value={1}>Basic</option>
+                                            <option value={2}>Premium</option>
+                                            <option value={3}>VIP</option>
+                                            <option value={4}>Without Road Map</option>
+                                            <option value={5}>Blocked</option>
+                                            <option value={6}>Creative Push Only</option>
+                                            <option value={7}>Payment Overdue</option>
+                                          </select>
+                                          <button onClick={() => setEditingUser(null)} className="text-gray-400 hover:text-white"><X className="w-3 h-3" /></button>
+                                        </div>
+                                      ) : (
+                                        <button onClick={() => setEditingUser(userItem.id)} className="group flex items-center gap-1 text-xs hover:text-blue-400 transition-colors">
+                                          <div className={`w-1.5 h-1.5 rounded-full ${userItem.access_level >= 3 ? 'bg-purple-500' : userItem.access_level === 2 ? 'bg-blue-500' : 'bg-gray-500'}`} />
+                                          {ACCESS_LEVELS[userItem.access_level as AccessLevel]?.name || 'Unknown'}
+                                          <Edit3 className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </button>
+                                      )}
+                                    </td>
+                                    <td className="p-3">
+                                      <div className="flex items-center gap-1.5">
+                                        <Circle className={`w-1.5 h-1.5 ${userItem.is_active ? 'text-green-500 fill-green-500' : 'text-gray-500 fill-gray-500'}`} />
+                                        <span className={`text-xs ${userItem.is_active ? 'text-green-400' : 'text-gray-500'}`}>{userItem.is_active ? 'Active' : 'Offline'}</span>
+                                      </div>
+                                    </td>
+                                    <td className="p-3">
+                                      {editingExpiry === userItem.id ? (
+                                        <div className="flex items-center gap-1">
+                                          <input type="date" value={expiryValue} onChange={(e) => setExpiryValue(e.target.value)} className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white w-28" />
+                                          <button onClick={() => handleUpdateUserExpiry(userItem.id, expiryValue ? new Date(expiryValue).toISOString() : null)} disabled={isUpdatingExpiry} className="text-green-500 hover:text-green-400 p-1"><Check className="w-3 h-3" /></button>
+                                          <button onClick={() => setEditingExpiry(null)} className="text-gray-400 hover:text-white p-1"><X className="w-3 h-3" /></button>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-1.5 text-xs">
+                                          <span className={!userItem.access_expires_at ? 'text-green-500' : (new Date(userItem.access_expires_at) < new Date() ? 'text-red-500' : 'text-gray-300')}>
+                                            {userItem.access_expires_at ? new Date(userItem.access_expires_at).toLocaleDateString() : 'Lifetime'}
+                                          </span>
+                                          <button onClick={() => { setEditingExpiry(userItem.id); setExpiryValue(userItem.access_expires_at ? new Date(userItem.access_expires_at).toISOString().split('T')[0] : ''); }} className="text-gray-600 hover:text-blue-400 transition-colors"><Edit3 className="w-3 h-3" /></button>
+                                        </div>
+                                      )}
+                                    </td>
+                                    <td className="p-3">
+                                      <span className="text-xs text-gray-500">
+                                        {userItem.created_at ? new Date(userItem.created_at).toLocaleDateString() : '—'}
+                                      </span>
+                                    </td>
+                                    <td className="p-3 text-right">
+                                      <div className="flex justify-end gap-1">
+                                        <button
+                                          onClick={() => {
+                                            if (expandedUser === userItem.id) {
+                                              setExpandedUser(null);
+                                              setAdjustingBalance(null);
+                                              setChangingPassword(null);
+                                              setEditingReminder(null);
+                                              setEditingOverdue(null);
+                                            } else {
+                                              setExpandedUser(userItem.id);
+                                            }
+                                          }}
+                                          className={`p-1.5 rounded transition-colors relative ${expandedUser === userItem.id ? 'bg-gray-700 text-white' : 'hover:bg-gray-700 text-gray-400'}`}
+                                          title="More Actions"
+                                        >
+                                          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expandedUser === userItem.id ? 'rotate-180' : ''}`} />
+                                          {((userItem.payment_reminder ? 1 : 0) + (userItem.overdue_message ? 1 : 0) + (userItem.expired_message ? 1 : 0)) > 0 && (
+                                            <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                                              {(userItem.payment_reminder ? 1 : 0) + (userItem.overdue_message ? 1 : 0) + (userItem.expired_message ? 1 : 0)}
+                                            </span>
+                                          )}
+                                        </button>
+                                        <button onClick={() => handleDeleteUser(userItem.id)} disabled={userItem.id === user?.id} className="p-1.5 hover:bg-red-900/30 text-gray-400 hover:text-red-500 rounded transition-colors disabled:opacity-30" title="Delete User">
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                  {/* Expanded Details Row */}
+                                  {(expandedUser === userItem.id || adjustingBalance === userItem.id || changingPassword === userItem.id || editingReminder === userItem.id || editingOverdue === userItem.id) && (
+                                    <tr className="bg-gray-800/30">
+                                      <td colSpan={6} className="p-4 border-l-2 border-primary">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                          {/* Balance Section */}
+                                          <div className="space-y-2">
+                                            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Balance Adjustment</div>
+                                            <div className="flex flex-col gap-2">
+                                              <select value={balanceType} onChange={(e) => setBalanceType(e.target.value as 'add' | 'set')} className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white">
+                                                <option value="add">Add</option>
+                                                <option value="set">Set</option>
+                                              </select>
+                                              <div className="flex gap-2">
+                                                <input type="number" value={balanceAmount} onChange={(e) => { if (adjustingBalance !== userItem.id) { setAdjustingBalance(userItem.id); setBalanceAmount(''); setBalanceType('add'); } setBalanceAmount(e.target.value) }} placeholder="Amount" className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white" />
+                                                <button onClick={() => handleAdjustBalance(userItem.id)} disabled={isUpdatingBalance || !balanceAmount} className="bg-green-600 hover:bg-green-500 text-white rounded px-2 py-1 text-xs"><Check className="w-3 h-3" /></button>
+                                              </div>
+                                            </div>
+                                          </div>
+                                          {/* Password Section */}
+                                          <div className="space-y-2">
+                                            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Reset Password</div>
+                                            <div className="flex gap-2">
+                                              <input type="password" value={newPassword} onChange={(e) => { if (changingPassword !== userItem.id) { setChangingPassword(userItem.id); setNewPassword(''); } setNewPassword(e.target.value) }} placeholder="New Pass" className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white" />
+                                              <button onClick={() => handleChangePassword(userItem.id)} disabled={isUpdatingPassword || newPassword.length < 6} className="bg-yellow-600 hover:bg-yellow-500 text-white rounded px-2 py-1 text-xs"><Key className="w-3 h-3" /></button>
+                                            </div>
+                                          </div>
+                                          {/* Team Assignment */}
+                                          <div className="space-y-2">
+                                            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Assign to Team</div>
+                                            <form onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); handleAssignTeam(userItem.id, fd.get('teamName') as string); }} className="flex gap-2">
+                                              <input name="teamName" type="text" defaultValue={userItem.team_name || ''} placeholder="Team Name" className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white" />
+                                              <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white rounded px-2 py-1 text-xs"><Check className="w-3 h-3" /></button>
+                                            </form>
+                                          </div>
+                                          {/* Reminder Section */}
+                                          <div className="space-y-2">
+                                            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center justify-between">
+                                              <span>Payment Reminder</span>
+                                              {userItem.payment_reminder && (<button onClick={() => handleDeleteReminder(userItem.id)} className="text-red-400 hover:text-red-300"><Trash2 className="w-3 h-3" /></button>)}
+                                            </div>
+                                            <div className="flex gap-2">
+                                              <input type="text" value={reminderText} onChange={(e) => { if (editingReminder !== userItem.id) { setEditingReminder(userItem.id); setReminderText(userItem.payment_reminder || ''); } setReminderText(e.target.value) }} placeholder={userItem.payment_reminder || "Set reminder..."} className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white" />
+                                              <button onClick={() => handleUpdateReminder(userItem.id)} disabled={isUpdatingReminder} className="bg-blue-600 hover:bg-blue-500 text-white rounded px-2 py-1 text-xs"><Check className="w-3 h-3" /></button>
+                                            </div>
+                                          </div>
+                                          {/* Overdue Section */}
+                                          <div className="space-y-2">
+                                            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center justify-between">
+                                              <span>Overdue Message</span>
+                                              {userItem.overdue_message && (<button onClick={() => handleDeleteOverdue(userItem.id)} className="text-red-400 hover:text-red-300"><Trash2 className="w-3 h-3" /></button>)}
+                                            </div>
+                                            <div className="flex gap-2">
+                                              <input type="text" value={overdueText} onChange={(e) => { if (editingOverdue !== userItem.id) { setEditingOverdue(userItem.id); setOverdueText(userItem.overdue_message || ''); } setOverdueText(e.target.value) }} placeholder={userItem.overdue_message || "Set message..."} className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white" />
+                                              <button onClick={() => handleUpdateOverdue(userItem.id)} disabled={isUpdatingOverdue} className="bg-red-600 hover:bg-red-500 text-white rounded px-2 py-1 text-xs"><Check className="w-3 h-3" /></button>
+                                            </div>
+                                          </div>
+                                          {/* Expired Section */}
+                                          <div className="space-y-2">
+                                            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center justify-between">
+                                              <span>Expired Message</span>
+                                              {userItem.expired_message && (<button onClick={() => handleClearExpired(userItem.id)} className="text-red-400 hover:text-red-300"><Trash2 className="w-3 h-3" /></button>)}
+                                            </div>
+                                            <div className="flex gap-2">
+                                              <input type="text" value={expiredText} onChange={(e) => { if (editingExpired !== userItem.id) { setEditingExpired(userItem.id); setExpiredText(userItem.expired_message || ''); } setExpiredText(e.target.value) }} placeholder={userItem.expired_message || "Set expired message..."} className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-white" />
+                                              <button onClick={() => handleUpdateExpired(userItem.id)} disabled={isUpdatingExpired} className="bg-orange-600 hover:bg-orange-500 text-white rounded px-2 py-1 text-xs"><Check className="w-3 h-3" /></button>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        {/* Device Info */}
+                                        <div className="mt-4 pt-4 border-t border-gray-700">
+                                          <div className="flex items-center justify-between mb-3">
+                                            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                                              <Monitor className="w-3.5 h-3.5" />
+                                              <span>Device Binding</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              {(userItem.device_token || userItem.first_fingerprint) && (
+                                                <button onClick={() => handleResetDevice(userItem.id)} disabled={resettingDevice === userItem.id} className="inline-flex items-center gap-1 text-xs text-yellow-500 hover:text-yellow-400 transition-colors">
+                                                  <RefreshCw className={`w-3 h-3 ${resettingDevice === userItem.id ? 'animate-spin' : ''}`} />
+                                                  Reset Device
+                                                </button>
+                                              )}
+                                              <button onClick={() => loadDeviceAttempts(userItem.id)} disabled={loadingDeviceAttempts === userItem.id} className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors">
+                                                {loadingDeviceAttempts === userItem.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <AlertTriangle className="w-3 h-3" />}
+                                                Load Attempts
+                                              </button>
+                                            </div>
+                                          </div>
+                                          {!userItem.first_fingerprint && !userItem.device_token && (
+                                            <div className="text-xs text-gray-500">No device registered yet.</div>
+                                          )}
+                                          {deviceAttempts[userItem.id] && deviceAttempts[userItem.id].length > 0 && (
+                                            <div className="space-y-1 max-h-40 overflow-y-auto">
+                                              <div className="text-xs font-semibold text-red-400 flex items-center gap-1 mb-1">
+                                                <AlertTriangle className="w-3 h-3" />
+                                                Blocked Login Attempts ({deviceAttempts[userItem.id].length})
+                                              </div>
+                                              {deviceAttempts[userItem.id].map((attempt: any, idx: number) => (
+                                                <div key={attempt.id || idx} className="bg-red-900/20 border border-red-900/30 rounded p-2 text-xs">
+                                                  <div className="flex items-center justify-between mb-1">
+                                                    <span className="text-red-400 font-medium">{new Date(attempt.created_at).toLocaleString()}</span>
+                                                    <span className="text-gray-500">IP: {attempt.ip_address || 'unknown'}</span>
+                                                  </div>
+                                                  <div className="grid grid-cols-2 md:grid-cols-3 gap-1 text-gray-400">
+                                                    {attempt.device_info?.browser && <span>Browser: {attempt.device_info.browser}</span>}
+                                                    {attempt.device_info?.os && <span>OS: {attempt.device_info.os}</span>}
+                                                    {attempt.device_info?.device_type && <span>Type: {attempt.device_info.device_type}</span>}
+                                                  </div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </Fragment>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </>
               )}
             </div>
           )}
@@ -2413,6 +2652,7 @@ export default function AdminPanel() {
                     <thead>
                       <tr className="border-b border-gray-700">
                         <th className="py-3 px-4 text-sm font-medium text-gray-400 uppercase">User</th>
+                        <th className="py-3 px-4 text-sm font-medium text-gray-400 uppercase">Team</th>
                         <th className="py-3 px-4 text-sm font-medium text-gray-400 uppercase">Amount</th>
                         <th className="py-3 px-4 text-sm font-medium text-gray-400 uppercase">Details</th>
                         <th className="py-3 px-4 text-sm font-medium text-gray-400 uppercase">Status</th>
@@ -2746,250 +2986,121 @@ export default function AdminPanel() {
             </div>
           )}
 
-          {activeTab === 'teams' && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium text-white">Teams</h3>
-                <button
-                  onClick={() => { setShowTeamForm(!showTeamForm); setEditingTeam(null); setTeamForm({ name: '', notes: '', access_level: 1, access_expires_at: '' }); }}
-                  className="flex items-center gap-2 bg-primary hover:bg-red-700 px-4 py-2 rounded-lg transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  {showTeamForm ? 'Cancel' : 'Create Team'}
-                </button>
-              </div>
 
-              {showTeamForm && (
-                <div className="bg-gray-800 rounded-lg p-4 space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Team Name</label>
-                      <input
-                        value={teamForm.name}
-                        onChange={(e) => setTeamForm(prev => ({ ...prev, name: e.target.value }))}
-                        className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-white"
-                        placeholder="Enter team name"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Access Level</label>
-                      <select
-                        value={teamForm.access_level}
-                        onChange={(e) => setTeamForm(prev => ({ ...prev, access_level: Number(e.target.value) }))}
-                        className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-white"
-                      >
-                        {Object.entries(ACCESS_LEVELS).map(([key, info]) => (
-                          <option key={key} value={key}>{info.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Access Expires</label>
-                      <input
-                        type="date"
-                        value={teamForm.access_expires_at}
-                        onChange={(e) => setTeamForm(prev => ({ ...prev, access_expires_at: e.target.value }))}
-                        className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Notes</label>
-                      <input
-                        value={teamForm.notes}
-                        onChange={(e) => setTeamForm(prev => ({ ...prev, notes: e.target.value }))}
-                        className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-white"
-                        placeholder="Team notes..."
-                      />
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleCreateTeam}
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
-                  >
-                    Create Team
-                  </button>
-                </div>
-              )}
 
-              {isLoadingTeams ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-                  Loading teams...
-                </div>
-              ) : teams.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">No teams yet</div>
-              ) : (
-                <div className="space-y-4">
-                  {teams.map(team => (
-                    <div key={team.id} className="bg-gray-800 rounded-lg p-4">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          {editingTeam === team.id ? (
-                            <div className="space-y-3">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div>
-                                  <label className="block text-xs text-gray-400 mb-1">Name</label>
-                                  <input
-                                    defaultValue={team.name}
-                                    id={`team-name-${team.id}`}
-                                    className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-white"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-xs text-gray-400 mb-1">Access Level</label>
-                                  <select
-                                    defaultValue={team.access_level}
-                                    id={`team-level-${team.id}`}
-                                    className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-white"
-                                  >
-                                    {Object.entries(ACCESS_LEVELS).map(([key, info]) => (
-                                      <option key={key} value={key}>{info.name}</option>
-                                    ))}
-                                  </select>
-                                </div>
-                                <div>
-                                  <label className="block text-xs text-gray-400 mb-1">Access Expires</label>
-                                  <input
-                                    type="date"
-                                    defaultValue={team.access_expires_at ? new Date(team.access_expires_at).toISOString().split('T')[0] : ''}
-                                    id={`team-expires-${team.id}`}
-                                    className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-white"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-xs text-gray-400 mb-1">Notes</label>
-                                  <input
-                                    defaultValue={team.notes || ''}
-                                    id={`team-notes-${team.id}`}
-                                    className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-white"
-                                  />
-                                </div>
-                              </div>
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => {
-                                    const nameEl = document.getElementById(`team-name-${team.id}`) as HTMLInputElement;
-                                    const levelEl = document.getElementById(`team-level-${team.id}`) as HTMLSelectElement;
-                                    const expiresEl = document.getElementById(`team-expires-${team.id}`) as HTMLInputElement;
-                                    const notesEl = document.getElementById(`team-notes-${team.id}`) as HTMLInputElement;
-                                    handleUpdateTeam(team.id, {
-                                      name: nameEl.value,
-                                      access_level: Number(levelEl.value),
-                                      access_expires_at: expiresEl.value ? new Date(expiresEl.value).toISOString() : null,
-                                      notes: notesEl.value || null,
-                                    });
-                                  }}
-                                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-xs transition-colors"
-                                >
-                                  Save
-                                </button>
-                                <button
-                                  onClick={() => setEditingTeam(null)}
-                                  className="bg-gray-600 hover:bg-gray-500 text-white px-3 py-1.5 rounded text-xs transition-colors"
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="flex items-center gap-3 mb-1">
-                                <h4 className="text-white font-semibold text-lg">{team.name}</h4>
-                                <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">
-                                  {team.members_count} {team.members_count === 1 ? 'member' : 'members'}
-                                </span>
-                                <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">
-                                  {ACCESS_LEVELS[team.access_level as AccessLevel]?.name || `Level ${team.access_level}`}
-                                </span>
-                              </div>
-                              {team.access_expires_at && (
-                                <div className="text-xs text-gray-500 mb-1">
-                                  Expires: {new Date(team.access_expires_at).toLocaleDateString()}
-                                </div>
-                              )}
-                              {team.notes && (
-                                <p className="text-sm text-gray-400 mt-1">{team.notes}</p>
-                              )}
-                            </>
-                          )}
-                        </div>
-                        {editingTeam !== team.id && (
-                          <div className="flex items-center gap-2 ml-4">
-                            <button onClick={() => setEditingTeam(team.id)} className="text-blue-400 hover:text-blue-300 p-1">
-                              <Edit3 className="w-4 h-4" />
-                            </button>
-                            <button onClick={() => handleDeleteTeam(team.id)} className="text-red-400 hover:text-red-300 p-1">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="border-t border-gray-700 pt-3 mt-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs text-gray-500 uppercase tracking-wider">Members</span>
-                          <button
-                            onClick={() => setAddingMemberTeamId(addingMemberTeamId === team.id ? null : team.id)}
-                            className="text-xs text-green-400 hover:text-green-300 flex items-center gap-1"
-                          >
-                            <Plus className="w-3 h-3" />
-                            Add Member
-                          </button>
-                        </div>
-
-                        {addingMemberTeamId === team.id && (
-                          <div className="flex gap-2 mb-3">
-                            <select
-                              value={memberSearchEmail}
-                              onChange={(e) => setMemberSearchEmail(e.target.value)}
-                              className="flex-1 bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-sm text-white"
-                            >
-                              <option value="">Select user...</option>
-                              {users.filter((u: any) => !u.team_id && u.role !== 'admin').map((u: any) => (
-                                <option key={u.id} value={u.id}>{u.email} ({u.name})</option>
-                              ))}
-                            </select>
-                            <button
-                              onClick={() => { if (memberSearchEmail) handleAddMember(team.id, memberSearchEmail); }}
-                              disabled={!memberSearchEmail}
-                              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-3 py-1.5 rounded text-sm transition-colors"
-                            >
-                              Add
-                            </button>
-                          </div>
-                        )}
-
-                        {team.members.length === 0 ? (
-                          <p className="text-xs text-gray-500">No members yet</p>
-                        ) : (
-                          <div className="space-y-1">
-                            {team.members.map(member => (
-                              <div key={member.id} className="flex items-center justify-between bg-gray-900/50 rounded px-3 py-2">
-                                <div>
-                                  <span className="text-sm text-white">{member.email}</span>
-                                  {member.name && <span className="text-xs text-gray-500 ml-2">({member.name})</span>}
-                                </div>
-                                <button
-                                  onClick={() => handleRemoveMember(member.id)}
-                                  className="text-red-400 hover:text-red-300 p-1"
-                                  title="Remove from team"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
 
         </div>
       </div>
+      
+      {/* Team Transactions Modal */}
+      {viewingTeamTransactions && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-4xl max-h-[80vh] flex flex-col shadow-2xl">
+            <div className="p-4 border-b border-gray-700 flex items-center justify-between bg-gray-800/50 rounded-t-xl">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <History className="w-5 h-5 text-purple-400" />
+                Team Transactions
+              </h3>
+              <button 
+                onClick={() => setViewingTeamTransactions(null)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-0 overflow-auto flex-1">
+              {(() => {
+                const team = teams.find(t => t.id === viewingTeamTransactions);
+                const teamMemberIds = users.filter(u => u.team_id === viewingTeamTransactions).map(u => u.id);
+                const teamTransactions = transactions.filter(t => teamMemberIds.includes(t.user_id));
+                
+                if (!team) return null;
+                
+                return (
+                  <div className="bg-gray-900">
+                    <div className="p-4 bg-blue-900/10 border-b border-blue-900/30">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-300">Team: <span className="font-semibold text-white">{team.name}</span></span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-400">Total Balance:</span>
+                          <span className="font-mono text-green-400 font-bold">
+                            ${users.filter(u => u.team_id === viewingTeamTransactions).reduce((sum, m) => sum + (m.balance || 0), 0).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {teamTransactions.length > 0 ? (
+                      <table className="w-full text-left border-collapse">
+                        <thead className="bg-gray-800 text-gray-400 text-xs sticky top-0">
+                          <tr>
+                            <th className="p-3 font-medium">Date</th>
+                            <th className="p-3 font-medium">User</th>
+                            <th className="p-3 font-medium">Type/Hash</th>
+                            <th className="p-3 font-medium">Amount</th>
+                            <th className="p-3 font-medium text-right">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-800">
+                          {teamTransactions.map((tx) => {
+                            const user = users.find(u => u.id === tx.user_id);
+                            return (
+                              <tr key={tx.id} className="hover:bg-gray-800/50 transition-colors">
+                                <td className="p-3 text-xs text-gray-400">
+                                  {new Date(tx.created_at).toLocaleString()}
+                                </td>
+                                <td className="p-3 text-sm text-white">
+                                  <div className="flex flex-col">
+                                    <span>{user?.email || 'Unknown'}</span>
+                                    {user?.name && <span className="text-xs text-gray-500">{user.name}</span>}
+                                  </div>
+                                </td>
+                                <td className="p-3 text-xs text-gray-400 font-mono">
+                                  <div className="max-w-[200px] truncate" title={tx.transaction_hash}>
+                                    {tx.transaction_hash}
+                                  </div>
+                                  <div className="text-gray-500">{tx.currency} • {tx.crypto_address}</div>
+                                </td>
+                                <td className="p-3 text-sm font-mono text-white">
+                                  {tx.amount.toFixed(2)} USDT
+                                </td>
+                                <td className="p-3 text-right">
+                                  <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                                    tx.status === 'confirmed' ? 'bg-green-900/30 text-green-400' :
+                                    tx.status === 'rejected' ? 'bg-red-900/30 text-red-400' :
+                                    'bg-yellow-900/30 text-yellow-400'
+                                  }`}>
+                                    {tx.status.toUpperCase()}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <div className="p-12 text-center text-gray-500">
+                        <History className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                        <p>No transactions found for this team.</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+            
+            <div className="p-4 border-t border-gray-700 bg-gray-800/30 rounded-b-xl flex justify-end">
+              <button 
+                onClick={() => setViewingTeamTransactions(null)}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

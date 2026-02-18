@@ -33,12 +33,24 @@ export async function GET(request: NextRequest) {
     }
     
     if (users) {
+
+
       try {
         const { data: teams } = await supabaseAdmin.from('teams').select('id, name');
         if (teams) {
           const teamMap = new Map(teams.map((t: any) => [t.id, t.name]));
           users.forEach((u: any) => {
             u.team_name = u.team_id ? teamMap.get(u.team_id) || null : null;
+          });
+        }
+      } catch {}
+
+      try {
+        const { data: balances } = await supabaseAdmin.from('user_balances').select('user_id, balance');
+        if (balances) {
+          const balanceMap = new Map(balances.map((b: any) => [b.user_id, Number(b.balance)]));
+          users.forEach((u: any) => {
+            u.balance = balanceMap.get(u.id) || 0;
           });
         }
       } catch {}

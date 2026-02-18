@@ -118,10 +118,10 @@ export async function POST(request: NextRequest) {
 
     // 4. Update Access Expiry (if subscription)
     if (service.type === 'subscription' && service.duration_days > 0) {
-      // Get current profile to see current expiry
+      // Get current profile to see current expiry and team_id
       const { data: profile } = await supabaseAdmin
         .from('profiles')
-        .select('access_expires_at')
+        .select('access_expires_at, team_id')
         .eq('id', user.id)
         .single();
         
@@ -133,11 +133,28 @@ export async function POST(request: NextRequest) {
       
       // Add days
       currentExpiry.setDate(currentExpiry.getDate() + service.duration_days);
+      const newExpiryIso = currentExpiry.toISOString();
       
+      // Update the purchaser
       await supabaseAdmin
         .from('profiles')
-        .update({ access_expires_at: currentExpiry.toISOString() })
+        .update({ access_expires_at: newExpiryIso })
         .eq('id', user.id);
+
+      // TEAM SYNC LOGIC
+      if (profile?.team_id) {
+        // 1. Update Team Record
+        await supabaseAdmin
+          .from('teams')
+          .update({ access_expires_at: newExpiryIso })
+          .eq('id', profile.team_id);
+          
+        // 2. Sync ALL team members
+        await supabaseAdmin
+          .from('profiles')
+          .update({ access_expires_at: newExpiryIso })
+          .eq('team_id', profile.team_id);
+      }
     }
 
     return NextResponse.json({ success: true, message: 'Purchase successful' });

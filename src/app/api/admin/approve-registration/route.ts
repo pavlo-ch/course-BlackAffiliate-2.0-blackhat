@@ -99,43 +99,81 @@ export async function POST(request: NextRequest) {
     }
     console.log('✅ Profile updated successfully.');
 
+    // 4. Team Logic & Synchronization
     if (registrationRequest.company_name && registrationRequest.company_name.trim() !== '') {
       const { data: existingTeam } = await supabaseAdmin
         .from('teams')
-        .select('id')
+        .select('*')
         .ilike('name', registrationRequest.company_name)
         .single();
 
       let teamId: string;
+      // Determine the best expiry date (Max of: Current Team Expiry vs New Grant)
+      // The new grant is `accessExpiresAt` (calculated above as +90 days)
+      let finalTeamExpiresAt = new Date(accessExpiresAt);
 
       if (existingTeam) {
         teamId = existingTeam.id;
+        const currentTeamExpiry = existingTeam.access_expires_at ? new Date(existingTeam.access_expires_at) : new Date(0);
+        
+        // If team outcome is later than new grant, use team's date (User inherits access)
+        // If new grant is later (e.g. this is a renewal/new member bringing value), extend team?
+        // "if someone from the team paid... it continues for everyone"
+        // Approval acts like a "payment" or "grant". Let's assume it extends or maintains the best date.
+        if (currentTeamExpiry > finalTeamExpiresAt) {
+          finalTeamExpiresAt = currentTeamExpiry;
+        }
+        
+        // Update Team with new max date
+        await supabaseAdmin
+          .from('teams')
+          .update({ access_expires_at: finalTeamExpiresAt.toISOString() })
+          .eq('id', teamId);
+
       } else {
+        // Create new team
         const { data: newTeam, error: newTeamError } = await supabaseAdmin
           .from('teams')
           .insert({
             name: registrationRequest.company_name,
             access_level: access_level,
-            access_expires_at: accessExpiresAt,
+            access_expires_at: finalTeamExpiresAt.toISOString(),
           })
           .select('id')
           .single();
 
         if (newTeamError || !newTeam) {
           console.error('Error creating team:', newTeamError);
-          return NextResponse.json({ success: false, message: newTeamError?.message || 'Error creating team' }, { status: 500 });
+          // If team creation fails, we still have the user created, but not linked. 
+          // Log error and proceed (or return error). Proceeding is safer to avoid half-state.
+        } else {
+          teamId = newTeam.id;
         }
-
-        teamId = newTeam.id;
       }
 
-      const { error: teamAssignError } = await supabaseAdmin
-        .from('profiles')
-        .update({ team_id: teamId })
-        .eq('id', userId);
+      if (teamId!) { // TS check
+        // Assign user to team AND Sync ALL team members to the final date
+        const { error: teamAssignError } = await supabaseAdmin
+          .from('profiles')
+          .update({ 
+            team_id: teamId,
+            access_expires_at: finalTeamExpiresAt.toISOString() // Sync this user
+          })
+          .eq('id', userId);
 
-      if (teamAssignError) {
-        console.error('Error assigning team to profile:', teamAssignError);
+        if (teamAssignError) {
+          console.error('Error assigning team to profile:', teamAssignError);
+        }
+
+        // Sync OTHER members of the team
+        const { error: syncError } = await supabaseAdmin
+          .from('profiles')
+          .update({ access_expires_at: finalTeamExpiresAt.toISOString() })
+          .eq('team_id', teamId); // This covers all members provided they are in the team
+
+         if (syncError) {
+          console.error('Error syncing team members:', syncError);
+        }
       }
     }
 

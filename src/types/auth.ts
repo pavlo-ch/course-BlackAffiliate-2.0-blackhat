@@ -23,6 +23,7 @@ export interface User {
   last_device_info?: Record<string, string> | null;
   team_id?: string | null;
   team_name?: string | null;
+  balance?: number;
 }
 
 export interface Team {
@@ -114,4 +115,5 @@ export interface AuthContextType extends AuthState {
   loadRegistrationRequests: () => Promise<void>;
   rejectRegistration: (requestId: string) => Promise<boolean>;
   remindAdmin: (requestId: string) => Promise<{ success: boolean; message: string }>;
+  refreshProfile: () => Promise<void>;
 }

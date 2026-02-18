@@ -2,12 +2,28 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { Clock, Send, ShoppingBag, Wallet } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AccessExpiredPage() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshProfile } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    // Refresh profile from DB to get latest expiry date
+    refreshProfile().then(() => {
+      // After refresh, user state will update — check in next render
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    // If access is not expired (or no expiry set), redirect to home
+    if (!user.access_expires_at || new Date(user.access_expires_at) >= new Date()) {
+      router.replace('/');
+    }
+  }, [user, router]);
 
   const handleLogout = async () => {
     await logout();

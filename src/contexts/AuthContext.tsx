@@ -957,6 +957,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const refreshProfile = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, name, role, created_at, is_approved, access_level, payment_reminder, overdue_message, expired_message, access_expires_at')
+        .eq('id', session.user.id)
+        .single();
+      if (profile && profile.is_approved) {
+        const userObj: User = {
+          id: profile.id,
+          email: session.user.email!,
+          password: '',
+          name: profile.name,
+          role: profile.role,
+          access_level: profile.access_level,
+          created_at: profile.created_at,
+          lastLogin: new Date(),
+          isApproved: true,
+          payment_reminder: profile.payment_reminder,
+          overdue_message: profile.overdue_message,
+          expired_message: profile.expired_message,
+          access_expires_at: profile.access_expires_at,
+        };
+        setUser(userObj);
+      }
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     isAuthenticated: !!user && user.access_level !== 5,
@@ -973,6 +1005,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadRegistrationRequests,
     rejectRegistration,
     remindAdmin,
+    refreshProfile,
   };
 
   return (

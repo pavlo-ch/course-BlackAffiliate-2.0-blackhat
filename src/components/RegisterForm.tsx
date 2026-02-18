@@ -118,7 +118,7 @@ export default function RegisterForm() {
 
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
-                Company Name <span className="text-gray-500">(optional)</span>
+                Team Name <span className="text-gray-500">(for team access)</span>
               </label>
               <div className="relative">
                 <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -127,7 +127,7 @@ export default function RegisterForm() {
                   value={formData.companyName}
                   onChange={(e) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
                   className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="Your company name"
+                  placeholder="Enter team name"
                 />
               </div>
             </div>

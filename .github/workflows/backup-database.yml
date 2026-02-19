@@ -1,0 +1,46 @@
+name: Backup Supabase Database
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Every day at midnight UTC
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Backup Directory
+        run: |
+          TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
+          BACKUP_DIR="database/backups/full_${TIMESTAMP}"
+          mkdir -p "${BACKUP_DIR}"
+          echo "BACKUP_DIR=${BACKUP_DIR}" >> $GITHUB_ENV
+
+      - name: Backup Tables
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          TABLES=("profiles" "registration_requests" "announcements" "user_read_announcements" "user_balances" "deposit_transactions" "crypto_wallets" "notifications" "blacklist" "shop_services" "purchases" "device_login_attempts" "teams")
+          
+          for TABLE in "${TABLES[@]}"; do
+            echo "Backing up table: ${TABLE}"
+            curl -X GET "${SUPABASE_URL}/rest/v1/${TABLE}?select=*" \
+              -H "apikey: ${SUPABASE_KEY}" \
+              -H "Authorization: Bearer ${SUPABASE_KEY}" \
+              -o "${BACKUP_DIR}/${TABLE}.json"
+          done
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add database/backups/
+          git commit -m "chore: automatic database backup $(date +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
+          git push origin main

@@ -74,15 +74,15 @@ export interface AccessLevelInfo {
 export const ACCESS_LEVELS: Record<AccessLevel, AccessLevelInfo> = {
   1: {
     level: 1,
-    name: 'Basic'
+    name: 'Knowledge Base'
   },
   2: {
     level: 2,
-    name: 'Premium'
+    name: 'Mentorship'
   },
   3: {
     level: 3,
-    name: 'VIP'
+    name: 'Mentorship'
   },
   4: {
     level: 4,

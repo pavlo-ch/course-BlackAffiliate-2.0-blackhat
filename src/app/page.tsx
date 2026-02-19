@@ -179,7 +179,7 @@ export default function Home() {
                   <div className="text-white mb-8 md:mb-10">
                     <span className="text-sm text-gray-300">Package: </span>
                     <span className="text-sm font-bold text-white">
-                      {user?.access_level === 1 ? 'Basic' : user?.access_level === 2 ? 'Premium' : user?.access_level === 3 ? 'VIP' : user?.access_level === 6 ? 'Creative Push Only' : ''}
+                      {user?.access_level === 1 ? 'Knowledge Base' : user?.access_level === 2 || user?.access_level === 3 ? 'Mentorship' : user?.access_level === 6 ? 'Creative Push Only' : ''}
                     </span>
                   </div>
                 )}
@@ -192,7 +192,7 @@ export default function Home() {
                     <AccessControl requiredLevel={3} fallback={
                       <div className="group inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white font-semibold rounded-lg shadow-lg cursor-not-allowed opacity-50">
                         <Map className="w-5 h-5" />
-                        <span>Road Map (VIP Only)</span>
+                         <span>Road Map</span>
                         <ArrowRight className="w-4 h-4" />
                       </div>
                     }>
@@ -212,7 +212,7 @@ export default function Home() {
                   <AccessControl requiredLevel={1} fallback={
                     <div className="group inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white font-semibold rounded-lg shadow-lg cursor-not-allowed opacity-50">
                       <Tag className="w-5 h-5" />
-                      <span>Offers (Basic+)</span>
+                      <span>Offers</span>
                       <ArrowRight className="w-4 h-4" />
                     </div>
                   }>
@@ -229,7 +229,7 @@ export default function Home() {
                   <AccessControl requiredLevel={2} fallback={
                     <div className="group inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white font-semibold rounded-lg shadow-lg cursor-not-allowed opacity-50">
                       <Wrench className="w-5 h-5" />
-                      <span>Tools (Premium+)</span>
+                       <span>Tools</span>
                       <ArrowRight className="w-4 h-4" />
                     </div>
                   }>
@@ -256,7 +256,7 @@ export default function Home() {
                     <AccessControl requiredLevel={1} fallback={
                       <div className="group inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white font-semibold rounded-lg shadow-lg cursor-not-allowed opacity-50">
                         <Calculator className="w-5 h-5" />
-                        <span>Calculator (Basic+)</span>
+                         <span>Calculator</span>
                         <ArrowRight className="w-4 h-4" />
                       </div>
                     }>

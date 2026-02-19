@@ -810,7 +810,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return lessonId === 'lesson-4-9';
     }
-    // Knowledge Base (1) and Mentorship (2, 3) all have full access
+    // Basic (1), Knowledge Base (2) and Mentorship (3) all have full access
     if (user.access_level >= 1 && user.access_level <= 3) return true;
     return user.access_level >= requiredLevel;
   }, [user]);

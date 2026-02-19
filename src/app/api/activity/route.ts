@@ -15,13 +15,45 @@ export async function PATCH(request: NextRequest) {
     if (authError || !authUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const now = new Date();
     
+    // Get current profile to calculate session info
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('last_seen, last_session_start, total_time_minutes')
+      .eq('id', authUser.id)
+      .single();
+
+    const updateData: any = {
+      last_seen: now.toISOString(),
+      is_active: true,
+    };
+
+    if (profile) {
+      const lastSeen = profile.last_seen ? new Date(profile.last_seen) : null;
+      const threeMinutesAgo = new Date(now.getTime() - 3 * 60 * 1000);
+      
+      // If last_seen > 3 min ago or no session, start a new session
+      if (!lastSeen || lastSeen < threeMinutesAgo || !profile.last_session_start) {
+        updateData.last_session_start = now.toISOString();
+        updateData.last_session_duration_minutes = 0;
+      } else {
+        // Continue existing session - add 1 minute to total time
+        updateData.total_time_minutes = (profile.total_time_minutes || 0) + 1;
+        // Update session duration
+        const sessionStart = new Date(profile.last_session_start);
+        updateData.last_session_duration_minutes = Math.round((now.getTime() - sessionStart.getTime()) / 60000);
+      }
+    } else {
+      updateData.last_session_start = now.toISOString();
+      updateData.last_session_duration_minutes = 0;
+      updateData.total_time_minutes = 0;
+    }
+
     const { error: updateError } = await supabaseAdmin
       .from('profiles')
-      .update({
-        last_seen: new Date().toISOString(),
-        is_active: true
-      })
+      .update(updateData)
       .eq('id', authUser.id);
     
     if (updateError) {

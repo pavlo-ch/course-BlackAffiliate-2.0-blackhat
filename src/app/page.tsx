@@ -179,7 +179,7 @@ export default function Home() {
                   <div className="text-white mb-8 md:mb-10">
                     <span className="text-sm text-gray-300">Package: </span>
                     <span className="text-sm font-bold text-white">
-                      {user?.access_level === 1 ? 'Knowledge Base' : user?.access_level === 2 || user?.access_level === 3 ? 'Mentorship' : user?.access_level === 6 ? 'Creative Push Only' : ''}
+                      {user?.access_level === 2 ? 'Knowledge Base' : user?.access_level === 3 ? 'Mentorship' : user?.access_level === 6 ? 'Creative Push Only' : ''}
                     </span>
                   </div>
                 )}

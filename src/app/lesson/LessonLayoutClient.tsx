@@ -358,7 +358,7 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
                 <div className="text-white mb-3">
                   <span className="text-xs text-gray-400">Package: </span>
                   <span className="text-xs font-bold text-white">
-                    {user?.access_level === 1 ? 'Knowledge Base' : 'Mentorship'}
+                    {user?.access_level === 2 ? 'Knowledge Base' : user?.access_level === 3 ? 'Mentorship' : ''}
                   </span>
                 </div>
               )}

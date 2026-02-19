@@ -93,14 +93,22 @@ export const toolsData: Tool[] = [
     languages: ['English']
   },
 
-  // Mobile Proxies
+  // Proxy
   {
     id: '12',
     name: 'ProxyUAH',
     type: 'proxy_providers',
-    category: 'Mobile Proxies',
+    category: 'Proxy',
     website: '@proxyuah',
     languages: ['English', 'Ukrainian', 'Russian']
+  },
+  {
+    id: '37',
+    name: 'MarsProxies',
+    type: 'proxy_providers',
+    category: 'Proxy',
+    website: 'https://marsproxies.com/',
+    languages: ['English']
   },
 
   // Virtual Cards

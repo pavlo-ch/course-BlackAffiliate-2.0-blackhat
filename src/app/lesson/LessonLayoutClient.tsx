@@ -273,7 +273,7 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
                   <AccessControl requiredLevel={3} fallback={
                     <div 
                       className="flex flex-col items-center gap-1 text-xs bg-gray-600 px-2 py-2 rounded-lg text-white font-medium cursor-not-allowed opacity-50"
-                      title="VIP Only"
+                      title="Road Map"
                     >
                       <Map className="w-4 h-4" />
                       <span className="text-center">Road Map</span>
@@ -293,7 +293,7 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
                 <AccessControl requiredLevel={1} fallback={
                   <div 
                     className="flex flex-col items-center gap-1 text-xs bg-gray-600 px-2 py-2 rounded-lg text-white font-medium cursor-not-allowed opacity-50"
-                    title="Basic+ Only"
+                    title="Offers"
                   >
                     <Tag className="w-4 h-4" />
                     <span className="text-center">Offers</span>
@@ -307,7 +307,7 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
                 <AccessControl requiredLevel={2} fallback={
                   <div 
                     className="flex flex-col items-center gap-1 text-xs bg-gray-600 px-2 py-2 rounded-lg text-white font-medium cursor-not-allowed opacity-50"
-                    title="Premium+"
+                    title="Tools"
                   >
                     <Wrench className="w-4 h-4" />
                     <span className="text-center">Tools</span>
@@ -327,7 +327,7 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
                   <AccessControl requiredLevel={1} fallback={
                     <div 
                       className="flex flex-col items-center gap-1 text-xs bg-gray-600 px-2 py-2 rounded-lg text-white font-medium cursor-not-allowed opacity-50"
-                      title="Basic+ Only"
+                      title="Calculator"
                     >
                       <Calculator className="w-4 h-4" />
                       <span className="text-center">Calculator</span>
@@ -358,7 +358,7 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
                 <div className="text-white mb-3">
                   <span className="text-xs text-gray-400">Package: </span>
                   <span className="text-xs font-bold text-white">
-                    {user?.access_level === 1 ? 'Basic' : user?.access_level === 2 ? 'Premium' : 'VIP'}
+                    {user?.access_level === 1 ? 'Knowledge Base' : 'Mentorship'}
                   </span>
                 </div>
               )}

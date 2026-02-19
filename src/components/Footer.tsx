@@ -85,7 +85,7 @@ export default function Footer() {
               © {new Date().getFullYear()} BlackAffiliate 2.0. All rights reserved.
             </p>
             <p className="text-gray-400 text-sm">
-              Powered by <a href='https://advantage-agency.co/' rel='noopener noreferrer' target='_blank' className='underline text-[#d12923]'>Advantage</a>
+              Powered by <a href='https://www.advantage-agency.co/media-buying-2' rel='noopener noreferrer' target='_blank' className='underline text-[#d12923]'>Advantage</a>
             </p>
           </div>
         </div>

@@ -5,6 +5,10 @@ on:
     - cron: '0 0 * * *' # Every day at midnight UTC
   workflow_dispatch: # Allow manual trigger
 
+env:
+  SUPABASE_URL: https://qzmlhevvrghvyeaxldjm.supabase.co
+  SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
 jobs:
   backup:
     runs-on: ubuntu-latest
@@ -23,56 +27,16 @@ jobs:
           echo "BACKUP_DIR=${BACKUP_DIR}" >> $GITHUB_ENV
 
       - name: Backup Tables
-        env:
-          # Try multiple secret names to be robust
-          SUPABASE_URL_1: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_URL_2: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_KEY_1: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SUPABASE_KEY_2: ${{ secrets.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY }}
-          SUPABASE_KEY_3: ${{ secrets.SUPABASE_KEY }}
         run: |
-          # Determine SUPABASE_URL
-          if [ -n "$SUPABASE_URL_1" ]; then
-            SUPABASE_URL="$SUPABASE_URL_1"
-          elif [ -n "$SUPABASE_URL_2" ]; then
-            SUPABASE_URL="$SUPABASE_URL_2"
-          else
-            echo "::error::SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL secret is not set in GitHub repository settings."
-            exit 1
-          fi
-          
-          # Determine SUPABASE_KEY
-          if [ -n "$SUPABASE_KEY_1" ]; then
-            SUPABASE_KEY="$SUPABASE_KEY_1"
-          elif [ -n "$SUPABASE_KEY_2" ]; then
-            SUPABASE_KEY="$SUPABASE_KEY_2"
-          elif [ -n "$SUPABASE_KEY_3" ]; then
-            SUPABASE_KEY="$SUPABASE_KEY_3"
-          else
-            echo "::error::SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY secret is not set in GitHub repository settings."
-            exit 1
-          fi
-
           TABLES=("profiles" "registration_requests" "announcements" "user_read_announcements" "user_balances" "deposit_transactions" "crypto_wallets" "notifications" "blacklist" "shop_services" "purchases" "device_login_attempts" "teams")
-          
+
           for TABLE in "${TABLES[@]}"; do
             echo "Backing up table: ${TABLE}"
-            # Ensure URL doesn't have trailing slash
-            CleanURL=${SUPABASE_URL%/}
-            
-            HTTP_CODE=$(curl -s -o "${BACKUP_DIR}/${TABLE}.json" -w "%{http_code}" -X GET "${CleanURL}/rest/v1/${TABLE}?select=*" \
+            curl -s -X GET "${SUPABASE_URL}/rest/v1/${TABLE}?select=*" \
               -H "apikey: ${SUPABASE_KEY}" \
-              -H "Authorization: Bearer ${SUPABASE_KEY}")
-            
-            if [ "$HTTP_CODE" -ne 200 ]; then
-              echo "::warning::Failed to backup ${TABLE}. HTTP status: ${HTTP_CODE}"
-              # Check if file is empty or contains error
-              if [ -f "${BACKUP_DIR}/${TABLE}.json" ]; then
-                cat "${BACKUP_DIR}/${TABLE}.json"
-              fi
-            else
-              echo "Successfully backed up ${TABLE}"
-            fi
+              -H "Authorization: Bearer ${SUPABASE_KEY}" \
+              -o "${BACKUP_DIR}/${TABLE}.json"
+            echo "Done: ${TABLE}"
           done
 
       - name: Commit and Push Changes

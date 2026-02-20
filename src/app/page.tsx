@@ -5,7 +5,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import AccessControl from '@/components/AccessControl';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
-import { ArrowRight, Play, FileText, HelpCircle, Map, Tag, Wrench, Settings, Calculator, Wallet, Gamepad2 } from 'lucide-react';
+import { ArrowRight, Play, FileText, HelpCircle, Map, Tag, Wrench, Settings, Calculator, Wallet, Gamepad2, ListChecks } from 'lucide-react';
 import { courseData } from '@/data/courseData';
 import AnnouncementsButton from '@/components/AnnouncementsButton';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
@@ -281,6 +281,23 @@ export default function Home() {
                     <span>Play demo</span>
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
                   </a>
+                  {/* Checklist - accessible to level 3+ */}
+                  <AccessControl requiredLevel={3} fallback={
+                    <div className="group inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white font-semibold rounded-lg shadow-lg cursor-not-allowed opacity-50">
+                      <ListChecks className="w-5 h-5" />
+                      <span>Checklist</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </div>
+                  }>
+                    <Link 
+                      href="/checklist"
+                      className="group inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl hover:shadow-emerald-500/25 transform hover:scale-105 transition-all duration-300 ease-out"
+                    >
+                      <ListChecks className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
+                      <span>Checklist</span>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
+                    </Link>
+                  </AccessControl>
                 </div>
               </div>
               
@@ -348,6 +365,8 @@ export default function Home() {
                   );
                 })}
               </div>
+
+
             </div>
           </div>
         </div>

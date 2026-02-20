@@ -14,6 +14,7 @@ const TELEGRAM_CHAT_ID = process.env.NEXT_PUBLIC_TELEGRAM_CHAT_ID || '';
 
 // BroadcastChannel для синхронізації між вкладками
 const AUTH_CHANNEL_NAME = 'blackaffiliate-auth-sync';
+const USER_CACHE_KEY = 'ba-cached-user';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -272,21 +273,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         sessionResult = await Promise.race([
           supabase.auth.getSession(),
           new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error('Session check timeout')), 5000)
+            setTimeout(() => reject(new Error('Session check timeout')), 10000)
           )
         ]) as { data: { session: any }, error: any };
       } catch (timeoutErr: any) {
         if (timeoutErr?.message === 'Session check timeout') {
           console.warn(`⏱️ Session check timeout on attempt ${attempt}`);
-          if (attempt >= 2) {
-            console.warn('🧹 Clearing potentially stale session after timeouts');
-            await clearInvalidSession();
-            setIsInitializing(false);
-            return;
+          
+          // Try to read session from localStorage as fallback
+          try {
+            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+            if (supabaseUrl) {
+              const projectId = supabaseUrl.match(/https:\/\/([^.]+)\./)?.[1];
+              if (projectId) {
+                const stored = localStorage.getItem(`sb-${projectId}-auth-token`);
+                if (stored) {
+                  const parsed = JSON.parse(stored);
+                  if (parsed?.access_token) {
+                    console.log('📦 Using session from localStorage fallback');
+                    sessionResult = { data: { session: { ...parsed, user: parsed.user || null } }, error: null };
+                  } else {
+                    sessionResult = { data: { session: null }, error: null };
+                  }
+                } else {
+                  sessionResult = { data: { session: null }, error: null };
+                }
+              } else {
+                sessionResult = { data: { session: null }, error: null };
+              }
+            } else {
+              sessionResult = { data: { session: null }, error: null };
+            }
+          } catch {
+            console.warn('⚠️ Failed to read localStorage fallback, treating as no session');
+            sessionResult = { data: { session: null }, error: null };
           }
+        } else {
           throw timeoutErr;
         }
-        throw timeoutErr;
       }
       
       const { data: { session }, error } = sessionResult;
@@ -323,7 +347,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .eq('id', session.user.id)
               .single(),
             new Promise<{ data: null, error: { message: string } }>((_, reject) => 
-              setTimeout(() => reject(new Error('Profile check timeout')), 5000)
+              setTimeout(() => reject(new Error('Profile check timeout')), 10000)
             )
           ]) as { data: any, error: any };
 
@@ -357,6 +381,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
           setUser(userObj);
           broadcastAuthState(userObj);
+          // Cache user for fallback on new tabs
+          try { localStorage.setItem(USER_CACHE_KEY, JSON.stringify(userObj)); } catch {}
         } else {
           setUser(null);
           broadcastAuthState(null);
@@ -368,7 +394,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } catch (profileError: any) {
           if (profileError?.message === 'Profile check timeout') {
-            console.warn('AuthContext: Profile check timeout');
+            console.warn('⏱️ Profile check timeout, trying cached user...');
+            // Try cached user from localStorage instead of setting null
+            try {
+              const cachedUser = localStorage.getItem(USER_CACHE_KEY);
+              if (cachedUser) {
+                const parsed = JSON.parse(cachedUser);
+                if (parsed && parsed.id) {
+                  console.log('📦 Using cached user from localStorage');
+                  setUser(parsed);
+                  broadcastAuthState(parsed);
+                  setIsInitializing(false);
+                  return;
+                }
+              }
+            } catch {}
             setUser(null);
             setIsInitializing(false);
             return;
@@ -504,6 +544,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   if (isMounted) {
               setUser(userObj);
                     broadcastAuthState(userObj);
+                    try { localStorage.setItem(USER_CACHE_KEY, JSON.stringify(userObj)); } catch {}
                   }
             } else {
                   if (isMounted) {
@@ -739,6 +780,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         setUser(userObj);
         broadcastAuthState(userObj);
+        try { localStorage.setItem(USER_CACHE_KEY, JSON.stringify(userObj)); } catch {}
         
         console.log('✅ Login successful');
         return { success: true };
@@ -787,6 +829,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             localStorage.removeItem(`sb-${projectId}-auth-token`);
           }
         }
+        localStorage.removeItem(USER_CACHE_KEY);
       } catch {}
       
     } catch (error) {
@@ -985,6 +1028,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           access_expires_at: profile.access_expires_at,
         };
         setUser(userObj);
+        try { localStorage.setItem(USER_CACHE_KEY, JSON.stringify(userObj)); } catch {}
       }
     } catch (error) {
       console.error('Error refreshing profile:', error);

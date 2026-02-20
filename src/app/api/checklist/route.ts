@@ -1,11 +1,18 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 
-// Server-side client for auth extraction from headers
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const serverSupabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+function createAuthClient(token: string) {
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  });
+}
 
 export async function GET(request: Request) {
   try {
@@ -15,13 +22,15 @@ export async function GET(request: Request) {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await serverSupabase.auth.getUser(token);
+    const supabase = createAuthClient(token);
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
       return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data, error } = await serverSupabase
+    const { data, error } = await supabase
       .from('user_checklists')
       .select('items')
       .eq('user_id', user.id)
@@ -53,7 +62,9 @@ export async function POST(request: Request) {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await serverSupabase.auth.getUser(token);
+    const supabase = createAuthClient(token);
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
       return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
@@ -67,7 +78,7 @@ export async function POST(request: Request) {
     }
 
     // Upsert the checklist
-    const { error } = await serverSupabase
+    const { error } = await supabase
       .from('user_checklists')
       .upsert({
         user_id: user.id,

@@ -18,7 +18,7 @@ interface ShopService {
 }
 
 export default function ShopPage() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, accessToken } = useAuth();
   const router = useRouter();
   
   const [services, setServices] = useState<ShopService[]>([]);
@@ -78,7 +78,7 @@ export default function ShopPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await getSessionToken()}` // Helper needed or use supabase.auth.session()
+          'Authorization': `Bearer ${accessToken}`
         },
         body: JSON.stringify({ serviceId: selectedService.id })
       });
@@ -108,14 +108,6 @@ export default function ShopPage() {
     }
   };
 
-  // Helper to get token (duplicated from cabinet.ts logic but simplified for client comp)
-  const getSessionToken = async () => {
-    // We can import supabase from lib/supabase or use the storage method
-    // For now, let's assume auth context might give us token or we use supabase client
-    const { supabase } = await import('@/lib/supabase');
-    const { data } = await supabase.auth.getSession();
-    return data.session?.access_token || '';
-  };
 
   if (isLoading || isLoadingData) {
     return (

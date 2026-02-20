@@ -51,7 +51,7 @@ interface LessonLayoutClientProps {
 
 export default function LessonLayoutClient({ courseData, children }: LessonLayoutClientProps) {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, accessToken } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const currentLessonId = pathname.split('/').pop() || '';
@@ -107,8 +107,7 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
   useEffect(() => {
     const loadAnnouncements = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
+        const token = accessToken;
         if (!token) {
           console.warn('No auth token available for loading announcements');
           return;
@@ -165,37 +164,7 @@ export default function LessonLayoutClient({ courseData, children }: LessonLayou
   }, []);
 
   const getToken = async (): Promise<string | undefined> => {
-    try {
-      const result = await Promise.race([
-        supabase.auth.getSession(),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000))
-      ]) as any;
-      if (result?.data?.session?.access_token) return result.data.session.access_token;
-    } catch {}
-
-    try {
-      const result = await Promise.race([
-        supabase.auth.refreshSession(),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000))
-      ]) as any;
-      if (result?.data?.session?.access_token) return result.data.session.access_token;
-    } catch {}
-
-    try {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      if (supabaseUrl) {
-        const projectId = supabaseUrl.match(/https:\/\/([^.]+)\./)?.[1];
-        if (projectId) {
-          const stored = localStorage.getItem(`sb-${projectId}-auth-token`);
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (parsed?.access_token) return parsed.access_token;
-          }
-        }
-      }
-    } catch {}
-
-    return undefined;
+    return accessToken || undefined;
   };
 
   const handleMarkAsRead = useCallback((id: string) => {

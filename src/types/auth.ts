@@ -103,6 +103,7 @@ export const ACCESS_LEVELS: Record<AccessLevel, AccessLevelInfo> = {
 };
 
 export interface AuthContextType extends AuthState {
+  accessToken: string | null;
   isInitializing: boolean;
   loadingStage: string;
   retryCount: number;

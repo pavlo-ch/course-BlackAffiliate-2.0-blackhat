@@ -65,27 +65,9 @@ async function getAuthToken(): Promise<string | null> {
     try {
       if (typeof window === 'undefined') return null;
 
-      // 1. Try getSession first (Priority: Freshness)
-      // This handles token refresh automatically
-      try {
-        console.log('[TOKEN] Trying getSession with timeout...');
-        const sessionResult = await Promise.race([
-          supabase.auth.getSession(),
-          new Promise<{ data: { session: null } }>((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout')), 2000)
-          )
-        ]) as { data: { session: any } };
-
-        if (sessionResult.data?.session?.access_token) {
-          console.log('[TOKEN] Got fresh token from getSession');
-          return sessionResult.data.session.access_token;
-        }
-      } catch (e) {
-        console.warn('[TOKEN] getSession failed or timed out, trying fallbacks');
-      }
-
-      // 2. Fallback: LocalStorage (Priority: Resilience)
-      console.log('[TOKEN] Trying localStorage fallback...');
+      // 1. Storage Access (Priority: Resilience)
+      // AuthContext handles active refresh now, so we only need to read.
+      console.log('[TOKEN] Trying localStorage token extraction...');
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
       if (supabaseUrl && typeof localStorage !== 'undefined') {
         try {
@@ -121,7 +103,7 @@ async function getAuthToken(): Promise<string | null> {
 }
 
 export default function AdminPanel() {
-  const { user, logout, rejectRegistration } = useAuth();
+  const { user, logout, rejectRegistration, accessToken } = useAuth();
   const [registrationRequests, setRegistrationRequests] = useState<RegistrationRequest[]>([]);
   const [users, setUsers] = useState<UserType[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -280,8 +262,7 @@ export default function AdminPanel() {
   const loadRequests = useCallback(async () => {
     setIsLoadingRequests(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      const token = accessToken || await getAuthToken();
       
       if (!token) {
         console.error('❌ AdminPanel: No access token available');

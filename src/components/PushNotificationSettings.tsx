@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Bell, BellOff, AlertCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import {
   registerServiceWorker,
@@ -10,6 +11,7 @@ import {
 } from '@/lib/pushNotifications';
 
 export default function PushNotificationSettings() {
+  const { accessToken } = useAuth();
   const [isEnabled, setIsEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,14 +84,11 @@ export default function PushNotificationSettings() {
         return;
       }
 
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
       const response = await fetch('/api/push-subscription', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : '',
+          'Authorization': accessToken ? `Bearer ${accessToken}` : '',
         },
         body: JSON.stringify({
           endpoint: subscription.endpoint,
@@ -123,13 +122,10 @@ export default function PushNotificationSettings() {
         const subscription = await getExistingSubscription(registration);
         
         if (subscription) {
-          const { data: { session } } = await supabase.auth.getSession();
-          const token = session?.access_token;
-
           await fetch(`/api/push-subscription?endpoint=${encodeURIComponent(subscription.endpoint)}`, {
             method: 'DELETE',
             headers: {
-              'Authorization': token ? `Bearer ${token}` : '',
+              'Authorization': accessToken ? `Bearer ${accessToken}` : '',
             }
           });
 

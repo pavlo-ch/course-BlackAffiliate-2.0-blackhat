@@ -45,7 +45,7 @@ const CHECKLIST_ITEMS = [
 ];
 
 export default function ChecklistPage() {
-  const { isAuthenticated, isInitializing } = useAuth();
+  const { isAuthenticated, isInitializing, accessToken } = useAuth();
   const router = useRouter();
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [showCelebration, setShowCelebration] = useState(false);
@@ -71,12 +71,11 @@ export default function ChecklistPage() {
 
       // 2. Fetch fresh data from API
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) return;
+        if (!accessToken) return;
 
         const res = await fetch('/api/checklist', {
           headers: {
-            'Authorization': `Bearer ${session.access_token}`
+            'Authorization': `Bearer ${accessToken}`
           }
         });
         
@@ -92,12 +91,12 @@ export default function ChecklistPage() {
       }
     };
 
-    if (isAuthenticated && !isInitializing) {
+    if (isAuthenticated && !isInitializing && accessToken) {
       loadChecklist();
     }
 
     return () => { mounted = false; };
-  }, [isAuthenticated, isInitializing]);
+  }, [isAuthenticated, isInitializing, accessToken]);
 
   // Show celebration when all items are checked
   useEffect(() => {
@@ -108,14 +107,13 @@ export default function ChecklistPage() {
 
   const saveToApi = async (newItems: string[]) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
+      if (!accessToken) return;
 
       await fetch('/api/checklist', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
+          'Authorization': `Bearer ${accessToken}`
         },
         body: JSON.stringify({ items: newItems })
       });

@@ -27,34 +27,14 @@ export interface DepositTransaction {
   created_at: string;
 }
 
-// Helper to get session token robustly
+// Helper to get session token robustly from localStorage
+// AuthContext handles refreshing the token, so we just read it.
 const getSessionToken = async (): Promise<string | null> => {
-  // 1. Try official client with short timeout
-  try {
-    const sessionPromise = supabase.auth.getSession();
-    const timeoutPromise = new Promise<{ data: { session: any } }>((_, reject) => 
-      // Short 2s timeout for happy path
-      setTimeout(() => reject(new Error('Timeout')), 2000)
-    );
-    
-    // We treat timeout as a sign to use fallback, not a hard error
-    const { data } = await Promise.race([sessionPromise, timeoutPromise]);
-    if (data?.session?.access_token) {
-      return data.session.access_token;
-    }
-  } catch (e) {
-    // Ignore error, proceed to fallback
-    // console.warn('Supabase client unresponsive, using fallback token retrieval');
-  }
-
-  // 2. Fallback: Direct LocalStorage Access
-  // This works even if the Supabase client WebSocket is dead/hanging
   if (typeof window !== 'undefined') {
     try {
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
       if (!supabaseUrl) return null;
       
-      // Extract project ID from URL (e.g. https://xyz.supabase.co -> xyz)
       const projectId = supabaseUrl.match(/https:\/\/([^.]+)\./)?.[1];
       if (!projectId) return null;
 

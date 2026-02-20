@@ -18,6 +18,12 @@ const USER_CACHE_KEY = 'ba-cached-user';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const accessTokenRef = useRef<string | null>(null);
+  
+  useEffect(() => {
+    accessTokenRef.current = accessToken;
+  }, [accessToken]);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [registrationRequests, setRegistrationRequests] = useState<RegistrationRequest[]>([]);
@@ -111,6 +117,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             } else {
               setUser(null);
             }
+            if (data.accessToken !== undefined) {
+              setAccessToken(data.accessToken);
+            }
             setIsInitializing(false);
             break;
             
@@ -156,12 +165,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Відправка оновлення стану всім вкладкам
-  const broadcastAuthState = useCallback((userData: User | null) => {
+  const broadcastAuthState = useCallback((userData: User | null, token: string | null = null) => {
     if (broadcastChannel.current && isLeaderTab.current) {
       try {
         broadcastChannel.current.postMessage({
           type: 'AUTH_STATE_UPDATE',
-          data: { user: userData },
+          data: { user: userData, accessToken: token },
           senderId: tabId.current
         });
         console.log(`📤 [Tab ${tabId.current}] Broadcasted auth state`);
@@ -192,6 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     setUser(null);
+    setAccessToken(null);
     broadcastAuthState(null);
   }, [broadcastAuthState]);
 
@@ -315,6 +325,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       const { data: { session }, error } = sessionResult;
       
+      if (session?.access_token) {
+        setAccessToken(session.access_token);
+      }
+      
       if (error && (
         error.message?.includes('Invalid Refresh Token') ||
         error.message?.includes('Refresh Token Not Found') ||
@@ -380,12 +394,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             access_expires_at: profile.access_expires_at,
           };
           setUser(userObj);
-          broadcastAuthState(userObj);
+          broadcastAuthState(userObj, session.access_token);
           // Cache user for fallback on new tabs
           try { localStorage.setItem(USER_CACHE_KEY, JSON.stringify(userObj)); } catch {}
         } else {
           setUser(null);
-          broadcastAuthState(null);
+          setAccessToken(null);
+          broadcastAuthState(null, null);
             try {
           await supabase.auth.signOut();
             } catch (signOutError) {
@@ -403,13 +418,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (parsed && parsed.id) {
                   console.log('📦 Using cached user from localStorage');
                   setUser(parsed);
-                  broadcastAuthState(parsed);
+                  broadcastAuthState(parsed, session?.access_token || null);
                   setIsInitializing(false);
                   return;
                 }
               }
             } catch {}
             setUser(null);
+            setAccessToken(null);
             setIsInitializing(false);
             return;
           }
@@ -436,6 +452,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('💀 AuthContext: All initialization attempts failed');
         setLoadingStage('Connection failed. Please refresh the page.');
         setUser(null);
+        setAccessToken(null);
         setIsInitializing(false);
       }
     }
@@ -485,6 +502,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (event === 'TOKEN_REFRESHED' && !session) {
               console.warn('🔑 Token refresh failed, clearing session');
               setUser(null);
+              setAccessToken(null);
               broadcastAuthState(null);
               return;
             }
@@ -499,6 +517,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               if (!isMounted) return;
 
           if (session?.user) {
+            setAccessToken(session.access_token);
                 const { data: profile, error: profileError } = await supabase
               .from('profiles')
               .select('id, name, role, created_at, is_approved, access_level, payment_reminder, overdue_message, expired_message, access_expires_at')
@@ -511,6 +530,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   console.error('AuthContext: Profile error in auth state change:', profileError);
                   if (isMounted) {
                     setUser(null);
+                    setAccessToken(null);
                     broadcastAuthState(null);
                   }
                   if (event !== 'SIGNED_OUT') {
@@ -549,6 +569,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             } else {
                   if (isMounted) {
               setUser(null);
+              setAccessToken(null);
                     broadcastAuthState(null);
                   }
               if (event !== 'SIGNED_OUT') {
@@ -562,6 +583,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               } else {
                 if (isMounted) {
                   setUser(null);
+                  setAccessToken(null);
                   broadcastAuthState(null);
                 }
               }
@@ -569,6 +591,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               console.error('AuthContext: Error in auth state change handler:', error);
               if (isMounted) {
                 setUser(null);
+                setAccessToken(null);
                 broadcastAuthState(null);
               }
             }
@@ -650,13 +673,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const updateActivity = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) return;
+        const token = accessTokenRef.current;
+        if (!token) return;
 
         await fetch('/api/activity', {
           method: 'PATCH',
           headers: {
-            'Authorization': `Bearer ${session.access_token}`
+            'Authorization': `Bearer ${token}`
           }
         });
       } catch (error) {
@@ -666,13 +689,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const markInactive = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) return;
+        const token = accessTokenRef.current;
+        if (!token) return;
 
         await fetch('/api/activity/inactive', {
           method: 'PATCH',
           headers: {
-            'Authorization': `Bearer ${session.access_token}`
+            'Authorization': `Bearer ${token}`
           }
         }).catch(() => {});
       } catch (error) {
@@ -779,6 +802,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
         
         setUser(userObj);
+        setAccessToken(apiData.session.access_token);
         broadcastAuthState(userObj);
         try { localStorage.setItem(USER_CACHE_KEY, JSON.stringify(userObj)); } catch {}
         
@@ -813,6 +837,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       setUser(null);
+      setAccessToken(null);
       
       if (broadcastChannel.current) {
         broadcastChannel.current.postMessage({
@@ -835,6 +860,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Logout error:', error);
       setUser(null);
+      setAccessToken(null);
     } finally {
       setIsLoading(false);
     }
@@ -906,8 +932,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log('📋 AuthContext: Loading registration requests via API...');
       
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      const token = accessTokenRef.current;
       
       if (!token) {
         console.error('❌ AuthContext: No access token available');
@@ -1004,17 +1029,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshProfile = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
+      if (!user?.id || !user?.email) return;
+      
       const { data: profile } = await supabase
         .from('profiles')
         .select('id, name, role, created_at, is_approved, access_level, payment_reminder, overdue_message, expired_message, access_expires_at')
-        .eq('id', session.user.id)
+        .eq('id', user.id)
         .single();
+        
       if (profile && profile.is_approved) {
         const userObj: User = {
           id: profile.id,
-          email: session.user.email!,
+          email: user.email,
           password: '',
           name: profile.name,
           role: profile.role,
@@ -1037,6 +1063,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value: AuthContextType = {
     user,
+    accessToken,
     isAuthenticated: !!user && user.access_level !== 5,
     isLoading,
     isInitializing,

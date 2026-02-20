@@ -113,7 +113,7 @@ export default function ToolsSections({ tools }: ToolsSectionsProps) {
     },
     {
       id: 'proxy_providers',
-      title: 'Mobile Proxies',
+      title: 'Proxies',
       description: 'Mobile proxies are essential for managing multiple accounts and bypassing platform restrictions. They provide dynamic IP rotation to keep your campaigns safe from bans.',
       proTip: 'Mobile proxies are crucial for account safety. Always use residential or mobile IPs for better success rates.',
       type: 'proxy_providers',

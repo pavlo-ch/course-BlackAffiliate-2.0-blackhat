@@ -40,7 +40,7 @@ export default function CourseSearch() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const pendingQueryRef = useRef<string>('');
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
 
   const accessLevel = user?.access_level || 1;
   const canSearch = accessLevel === 1 || accessLevel === 2 || accessLevel === 3;
@@ -63,47 +63,7 @@ export default function CourseSearch() {
         return;
       }
 
-      let session = null;
-      
-      const sessionTimeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
-      
-      try {
-        const sessionResult = await Promise.race([
-          (async () => {
-            const { data } = await supabase.auth.getSession();
-            if (data.session) {
-              const expiresAt = data.session.expires_at || 0;
-              const now = Math.floor(Date.now() / 1000);
-              if (expiresAt - now < 60) {
-                const { data: refreshData } = await supabase.auth.refreshSession();
-                return refreshData.session;
-              }
-              return data.session;
-            }
-            const { data: refreshData } = await supabase.auth.refreshSession();
-            return refreshData.session;
-          })(),
-          sessionTimeout
-        ]);
-        session = sessionResult;
-      } catch {
-        session = null;
-      }
-      
-      if (signal.aborted || searchIdRef.current !== searchId) {
-        return;
-      }
-      
-      if (!session) {
-        setStatus('error');
-        setErrorMessage('Session expired. Please refresh the page.');
-        searchStartTimeRef.current = null;
-        return;
-      }
-      
-      const token = session?.access_token;
-
-      if (!token) {
+      if (!accessToken) {
         if (searchIdRef.current === searchId) {
           setStatus('error');
           setErrorMessage('Authentication error. Please refresh the page.');
@@ -113,7 +73,7 @@ export default function CourseSearch() {
       }
 
       const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`, {
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: { 'Authorization': `Bearer ${accessToken}` },
         signal
       });
 

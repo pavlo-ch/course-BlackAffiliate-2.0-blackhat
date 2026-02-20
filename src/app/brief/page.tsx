@@ -30,21 +30,18 @@ const STEP_LABELS = [
 ];
 
 export default function BriefPage() {
-  const { user, isAuthenticated, isInitializing } = useAuth();
+  const { user, isAuthenticated, isInitializing, accessToken } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
 
   // Form data
   const [geo, setGeo] = useState('');
   const [topGames, setTopGames] = useState('');
   const [chosenGames, setChosenGames] = useState('');
   const [trafficCalcFiles, setTrafficCalcFiles] = useState<FileWithPreview[]>([]);
-  const [cpc, setCpc] = useState('');
-  const [cpl, setCpl] = useState('');
-  const [cpr, setCpr] = useState('');
-  const [cpa, setCpa] = useState('');
 
   const [splitTest, setSplitTest] = useState('');
   const [pwaLink, setPwaLink] = useState('');
@@ -108,7 +105,7 @@ export default function BriefPage() {
   const canProceed = (): boolean => {
     switch (step) {
       case 0: return true;
-      case 1: return geo.trim() !== '' && topGames.trim() !== '' && chosenGames.trim() !== '' && cpc.trim() !== '' && cpl.trim() !== '' && cpr.trim() !== '' && cpa.trim() !== '';
+      case 1: return geo.trim() !== '' && topGames.trim() !== '' && chosenGames.trim() !== '';
       case 2: return splitTest !== '' && pwaLink.trim() !== '';
       case 3: return fanPageScreenshots.length > 0 && negativeCommentsOption !== '';
       case 4: return creativesCount.trim() !== '' && creativesApproach.trim() !== '';
@@ -127,10 +124,6 @@ export default function BriefPage() {
       formData.append('geo', geo);
       formData.append('topGames', topGames);
       formData.append('chosenGames', chosenGames);
-      formData.append('cpc', cpc);
-      formData.append('cpl', cpl);
-      formData.append('cpr', cpr);
-      formData.append('cpa', cpa);
       formData.append('splitTest', splitTest);
       formData.append('pwaLink', pwaLink);
       formData.append('negativeComments', negativeCommentsOption + (negativeCommentsDetail ? ` — ${negativeCommentsDetail}` : ''));
@@ -160,12 +153,10 @@ export default function BriefPage() {
         formData.append(`caseScreenshot_${i}`, f.file);
       });
 
-      const { data: { session } } = await supabase.auth.getSession();
-      
       const response = await fetch('/api/brief', {
         method: 'POST',
-        headers: session?.access_token ? {
-          'Authorization': `Bearer ${session.access_token}`
+        headers: accessToken ? {
+          'Authorization': `Bearer ${accessToken}`
         } : {},
         body: formData,
       });
@@ -217,24 +208,41 @@ export default function BriefPage() {
     );
   }
 
-  const inputClasses = "w-full bg-gray-900/80 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500/50 transition-all duration-200";
-  const textareaClasses = `${inputClasses} min-h-[120px] resize-y`;
+  const getInputClasses = (isValid: boolean) => 
+    `w-full bg-gray-900/80 border rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none transition-all duration-200 ${
+      showErrors && !isValid 
+        ? 'border-red-500 focus:border-red-500 ring-1 ring-red-500/50' 
+        : 'border-gray-700 focus:border-red-500 focus:ring-1 focus:ring-red-500/50 hover:border-gray-600'
+    }`;
+
+  const getTextareaClasses = (isValid: boolean) => 
+    `${getInputClasses(isValid)} min-h-[120px] resize-y`;
+
   const labelClasses = "block text-sm font-medium text-gray-300 mb-2";
-  const radioClasses = "flex items-center gap-3 px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-lg cursor-pointer transition-all duration-200 hover:border-gray-500";
-  const radioActiveClasses = "flex items-center gap-3 px-4 py-3 bg-red-500/10 border border-red-500/50 rounded-lg cursor-pointer transition-all duration-200 ring-1 ring-red-500/30";
+
+  const getRadioClasses = (isSelected: boolean, isValid: boolean) => 
+    `flex items-center gap-3 px-4 py-3 bg-gray-900/50 border rounded-lg cursor-pointer transition-all duration-200 ${
+      isSelected
+        ? 'bg-red-500/10 border-red-500/50 ring-1 ring-red-500/30'
+        : showErrors && !isValid
+          ? 'border-red-500/80 ring-1 ring-red-500/30'
+          : 'border-gray-700 hover:border-gray-500'
+    }`;
 
   const MultiFileUploadZone = ({
     label,
     files,
     onSelect,
     onRemove,
-    accept = "image/*,.pdf,.xlsx,.xls,.csv,.doc,.docx"
+    accept = "image/*,.pdf,.xlsx,.xls,.csv,.doc,.docx",
+    isValid = true
   }: {
     label: string;
     files: FileWithPreview[];
     onSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onRemove: (index: number) => void;
     accept?: string;
+    isValid?: boolean;
   }) => (
     <div>
       <label className={labelClasses}>{label}</label>
@@ -260,7 +268,7 @@ export default function BriefPage() {
           ))}
         </div>
       )}
-      <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-700 rounded-lg cursor-pointer hover:border-red-500/50 hover:bg-red-500/5 transition-all duration-200">
+      <label className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed ${showErrors && !isValid ? 'border-red-500/80 bg-red-500/5' : 'border-gray-700 hover:border-red-500/50 hover:bg-red-500/5'} rounded-lg cursor-pointer transition-all duration-200`}>
         <Plus className="w-6 h-6 text-gray-500 mb-1" />
         <span className="text-gray-400 text-sm">Add file</span>
         <input type="file" className="hidden" accept={accept} multiple onChange={onSelect} />
@@ -321,15 +329,15 @@ export default function BriefPage() {
             </div>
             <div>
               <label className={labelClasses}>1. Which GEO are you currently working with? <span className="text-red-400">*</span></label>
-              <input type="text" className={inputClasses} placeholder="e.g. BR, IN, DE..." value={geo} onChange={e => setGeo(e.target.value)} />
+              <input type="text" className={getInputClasses(geo.trim() !== '')} placeholder="e.g. BR, IN, DE..." value={geo} onChange={e => setGeo(e.target.value)} />
             </div>
             <div>
               <label className={labelClasses}>2. What are the top games in SPY tools for your target GEO? <span className="text-red-400">*</span></label>
-              <textarea className={textareaClasses} placeholder="Please specify the service name and specific slots..." value={topGames} onChange={e => setTopGames(e.target.value)} />
+              <textarea className={getTextareaClasses(topGames.trim() !== '')} placeholder="Please specify the service name and specific slots..." value={topGames} onChange={e => setTopGames(e.target.value)} />
             </div>
             <div>
               <label className={labelClasses}>3. Which casino games did you choose to test? <span className="text-red-400">*</span></label>
-              <textarea className={textareaClasses} placeholder="Is this game present in your current casino offer..." value={chosenGames} onChange={e => setChosenGames(e.target.value)} />
+              <textarea className={getTextareaClasses(chosenGames.trim() !== '')} placeholder="Is this game present in your current casino offer..." value={chosenGames} onChange={e => setChosenGames(e.target.value)} />
             </div>
             <MultiFileUploadZone
               label="4. Upload your traffic calculations (from calculator, target ROI ≈ 40%)"
@@ -337,24 +345,6 @@ export default function BriefPage() {
               onSelect={e => handleMultiFileSelect(e, setTrafficCalcFiles)}
               onRemove={i => removeMultiFile(i, setTrafficCalcFiles)}
             />
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelClasses}>CPC <span className="text-red-400">*</span></label>
-                <input type="text" className={inputClasses} placeholder="$0.00" value={cpc} onChange={e => setCpc(e.target.value)} />
-              </div>
-              <div>
-                <label className={labelClasses}>CPL <span className="text-red-400">*</span></label>
-                <input type="text" className={inputClasses} placeholder="$0.00" value={cpl} onChange={e => setCpl(e.target.value)} />
-              </div>
-              <div>
-                <label className={labelClasses}>CPR <span className="text-red-400">*</span></label>
-                <input type="text" className={inputClasses} placeholder="$0.00" value={cpr} onChange={e => setCpr(e.target.value)} />
-              </div>
-              <div>
-                <label className={labelClasses}>CPA <span className="text-red-400">*</span></label>
-                <input type="text" className={inputClasses} placeholder="$0.00" value={cpa} onChange={e => setCpa(e.target.value)} />
-              </div>
-            </div>
           </div>
         );
 
@@ -371,7 +361,7 @@ export default function BriefPage() {
                 {['Yes, 2+ designs', 'No, using only one'].map(option => (
                   <div
                     key={option}
-                    className={splitTest === option ? radioActiveClasses : radioClasses}
+                    className={getRadioClasses(splitTest === option, splitTest !== '')}
                     onClick={() => setSplitTest(option)}
                   >
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${splitTest === option ? 'border-red-500 bg-red-500' : 'border-gray-500'}`}>
@@ -384,7 +374,7 @@ export default function BriefPage() {
             </div>
             <div>
               <label className={labelClasses}>6. Link to your PWA app or split test <span className="text-red-400">*</span></label>
-              <input type="url" className={inputClasses} placeholder="https://..." value={pwaLink} onChange={e => setPwaLink(e.target.value)} />
+              <input type="url" className={getInputClasses(pwaLink.trim() !== '')} placeholder="https://..." value={pwaLink} onChange={e => setPwaLink(e.target.value)} />
             </div>
           </div>
         );
@@ -402,6 +392,7 @@ export default function BriefPage() {
               onSelect={e => handleMultiFileSelect(e, setFanPageScreenshots)}
               onRemove={i => removeMultiFile(i, setFanPageScreenshots)}
               accept="image/*"
+              isValid={fanPageScreenshots.length > 0}
             />
             <div>
               <label className={labelClasses}>8. Does your advertising attract negative comments? <span className="text-red-400">*</span></label>
@@ -409,7 +400,7 @@ export default function BriefPage() {
                 {['Yes, a lot of negative comments', 'Yes, but rarely', 'No, comments are neutral/positive', 'Not tracking'].map(option => (
                   <div
                     key={option}
-                    className={negativeCommentsOption === option ? radioActiveClasses : radioClasses}
+                    className={getRadioClasses(negativeCommentsOption === option, negativeCommentsOption !== '')}
                     onClick={() => setNegativeCommentsOption(option)}
                   >
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${negativeCommentsOption === option ? 'border-red-500 bg-red-500' : 'border-gray-500'}`}>
@@ -419,7 +410,7 @@ export default function BriefPage() {
                   </div>
                 ))}
               </div>
-              <input type="text" className={`${inputClasses} mt-3`} placeholder="Additional details (optional)" value={negativeCommentsDetail} onChange={e => setNegativeCommentsDetail(e.target.value)} />
+              <input type="text" className={`${getInputClasses(true)} mt-3`} placeholder="Additional details (optional)" value={negativeCommentsDetail} onChange={e => setNegativeCommentsDetail(e.target.value)} />
             </div>
           </div>
         );
@@ -433,11 +424,11 @@ export default function BriefPage() {
             </div>
             <div>
               <label className={labelClasses}>9. How many different creatives have you tested? <span className="text-red-400">*</span></label>
-              <input type="number" className={inputClasses} placeholder="Number..." value={creativesCount} onChange={e => setCreativesCount(e.target.value)} />
+              <input type="number" className={getInputClasses(creativesCount.trim() !== '')} placeholder="Number..." value={creativesCount} onChange={e => setCreativesCount(e.target.value)} />
             </div>
             <div>
-              <label className={labelClasses}>10. Describe your current creative approaches <span className="text-red-400">*</span></label>
-              <textarea className={textareaClasses} placeholder="Emotion, bonus, game mechanics, story, social proof..." value={creativesApproach} onChange={e => setCreativesApproach(e.target.value)} />
+              <label className={labelClasses}>10. Які підходи в креативи ви протестували <span className="text-red-400">*</span></label>
+              <textarea className={getTextareaClasses(creativesApproach.trim() !== '')} placeholder="Emotion, bonus, game mechanics, story, social proof..." value={creativesApproach} onChange={e => setCreativesApproach(e.target.value)} />
             </div>
             <MultiFileUploadZone
               label="Creative examples (optional)"
@@ -462,7 +453,7 @@ export default function BriefPage() {
                 {['ABO', 'CBO', 'Mix'].map(option => (
                   <div
                     key={option}
-                    className={campaignModel === option ? radioActiveClasses : radioClasses}
+                    className={getRadioClasses(campaignModel === option, campaignModel !== '')}
                     onClick={() => setCampaignModel(option)}
                   >
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${campaignModel === option ? 'border-red-500 bg-red-500' : 'border-gray-500'}`}>
@@ -472,11 +463,11 @@ export default function BriefPage() {
                   </div>
                 ))}
               </div>
-              <input type="text" className={`${inputClasses} mt-3`} placeholder="Details if needed (optional)" value={campaignModelDetails} onChange={e => setCampaignModelDetails(e.target.value)} />
+              <input type="text" className={`${getInputClasses(true)} mt-3`} placeholder="Details if needed (optional)" value={campaignModelDetails} onChange={e => setCampaignModelDetails(e.target.value)} />
             </div>
             <div>
               <label className={labelClasses}>12. What structure do you use for testing creatives? <span className="text-red-400">*</span></label>
-              <input type="text" className={inputClasses} placeholder="e.g. 1:3:3, 1:1:1 (Campaign : Ad sets : Ads)" value={testingStructure} onChange={e => setTestingStructure(e.target.value)} />
+              <input type="text" className={getInputClasses(testingStructure.trim() !== '')} placeholder="e.g. 1:3:3, 1:1:1 (Campaign : Ad sets : Ads)" value={testingStructure} onChange={e => setTestingStructure(e.target.value)} />
             </div>
             <div>
               <label className={labelClasses}>13. Describe the audiences you have tested <span className="text-red-400">*</span></label>
@@ -484,7 +475,7 @@ export default function BriefPage() {
                 {audiences.map((audience, i) => (
                   <div key={i} className="flex gap-2">
                     <textarea
-                      className={`${inputClasses} min-h-[80px]`}
+                      className={`${getInputClasses(audiences.some(a => a.trim() !== ''))} min-h-[80px]`}
                       placeholder={`Audience ${i + 1} — M24–50, Advantage+ Audience, mobile only...`}
                       value={audience}
                       onChange={e => updateAudience(i, e.target.value)}
@@ -507,7 +498,7 @@ export default function BriefPage() {
             </div>
             <div>
               <label className={labelClasses}>14. Describe the optimization strategy from the Road Map you are using <span className="text-red-400">*</span></label>
-              <textarea className={textareaClasses} placeholder="Describe your strategy..." value={optimizationStrategy} onChange={e => setOptimizationStrategy(e.target.value)} />
+              <textarea className={getTextareaClasses(optimizationStrategy.trim() !== '')} placeholder="Describe your strategy..." value={optimizationStrategy} onChange={e => setOptimizationStrategy(e.target.value)} />
             </div>
           </div>
         );
@@ -535,6 +526,7 @@ export default function BriefPage() {
               onSelect={e => handleMultiFileSelect(e, setCaseScreenshots)}
               onRemove={i => removeMultiFile(i, setCaseScreenshots)}
               accept="image/*"
+              isValid={caseScreenshots.length > 0}
             />
           </div>
         );
@@ -551,7 +543,6 @@ export default function BriefPage() {
               { label: 'GEO', value: geo },
               { label: 'Top SPY Games', value: topGames },
               { label: 'Casino Games for Test', value: chosenGames },
-              { label: 'CPC / CPL / CPR / CPA', value: [cpc, cpl, cpr, cpa].filter(v => v).join(' / ') || '—' },
               { label: 'PWA Split Test', value: splitTest },
               { label: 'PWA Link', value: pwaLink || '—' },
               { label: 'Negative Comments', value: negativeCommentsOption ? (negativeCommentsOption + (negativeCommentsDetail ? ` — ${negativeCommentsDetail}` : '')) : '—' },
@@ -658,9 +649,15 @@ export default function BriefPage() {
               
               {step < TOTAL_STEPS - 1 ? (
                 <button
-                  onClick={() => setStep(s => s + 1)}
-                  disabled={!canProceed()}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:from-gray-700 disabled:to-gray-800 disabled:cursor-not-allowed text-white font-medium rounded-lg shadow-lg hover:shadow-red-500/25 transition-all duration-200"
+                  onClick={() => {
+                    if (canProceed()) {
+                      setShowErrors(false);
+                      setStep(s => s + 1);
+                    } else {
+                      setShowErrors(true);
+                    }
+                  }}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-medium rounded-lg shadow-lg hover:shadow-red-500/25 transition-all duration-200"
                 >
                   Next
                   <ArrowRight className="w-4 h-4" />

@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { 
   ArrowLeft, ArrowRight, Check, Upload, X, Plus, Loader2,
-  Globe, Smartphone, Users, Palette, BarChart3, FileSearch, Send
+  Globe, Smartphone, Users, Palette, BarChart3, FileSearch, Send, Pencil
 } from 'lucide-react';
 
 interface FileWithPreview {
@@ -134,8 +134,9 @@ export default function BriefPage() {
       formData.append('testingStructure', testingStructure);
       formData.append('optimizationStrategy', optimizationStrategy);
 
-      audiences.forEach((a, i) => {
-        if (a.trim()) formData.append(`audience_${i}`, a);
+      const validAudiences = audiences.filter(a => a.trim() !== '');
+      validAudiences.forEach((a, i) => {
+        formData.append(`audience_${i}`, a);
       });
 
       trafficCalcFiles.forEach((f, i) => {
@@ -531,53 +532,152 @@ export default function BriefPage() {
           </div>
         );
 
-      case 7: // Review
+      case 7: // Review — fully inline editable (minimalistic design)
+        const MinimalInput = ({ label, value, onChange, placeholder }: any) => (
+          <div className="bg-gray-900/30 border border-gray-800/50 rounded-lg p-4 hover:border-gray-700 transition-colors group">
+            <div className="text-gray-400 text-sm font-medium mb-2 flex justify-between pr-2">
+              <span>{label}</span>
+              <Pencil className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500" />
+            </div>
+            <input 
+              className="w-full bg-transparent text-gray-200 text-base focus:outline-none placeholder-gray-700" 
+              value={value} 
+              onChange={e => onChange(e.target.value)} 
+              placeholder={placeholder || '—'}
+            />
+          </div>
+        );
+
+        const MinimalTextarea = ({ label, value, onChange, placeholder, minH = "min-h-[40px]" }: any) => (
+          <div className="bg-gray-900/30 border border-gray-800/50 rounded-lg p-4 hover:border-gray-700 transition-colors group">
+            <div className="text-gray-400 text-sm font-medium mb-2 flex justify-between pr-2">
+              <span>{label}</span>
+              <Pencil className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500" />
+            </div>
+            <textarea 
+              className={`w-full bg-transparent text-gray-200 text-base focus:outline-none resize-none ${minH} placeholder-gray-700 leading-relaxed`} 
+              value={value} 
+              onChange={e => onChange(e.target.value)} 
+              placeholder={placeholder || '—'}
+            />
+          </div>
+        );
+
+        const MinimalSelect = ({ label, value, onChange, options }: any) => (
+          <div className="bg-gray-900/30 border border-gray-800/50 rounded-lg p-4 hover:border-gray-700 transition-colors group">
+            <div className="text-gray-400 text-sm font-medium mb-2 flex justify-between pr-2">
+              <span>{label}</span>
+              <Pencil className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500" />
+            </div>
+            <select 
+              className="w-full bg-transparent text-gray-200 text-base focus:outline-none appearance-none cursor-pointer" 
+              value={value} 
+              onChange={e => onChange(e.target.value)}
+            >
+              <option value="" disabled className="bg-gray-900 text-gray-500">Select option...</option>
+              {options.map((opt: string) => <option key={opt} value={opt} className="bg-gray-900 text-gray-200">{opt}</option>)}
+            </select>
+          </div>
+        );
+
         return (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3 mb-6">
               <Check className="w-6 h-6 text-green-400" />
-              <h2 className="text-xl font-bold text-white">Review your answers</h2>
+              <div>
+                <h2 className="text-xl font-bold text-white">Review & Edit Answers</h2>
+                <p className="text-gray-400 text-sm mt-0.5">Click on any text below to edit it directly</p>
+              </div>
             </div>
 
-            {[
-              { label: 'GEO', value: geo },
-              { label: 'Top SPY Games', value: topGames },
-              { label: 'Casino Games for Test', value: chosenGames },
-              { label: 'PWA Split Test', value: splitTest },
-              { label: 'PWA Link', value: pwaLink || '—' },
-              { label: 'Negative Comments', value: negativeCommentsOption ? (negativeCommentsOption + (negativeCommentsDetail ? ` — ${negativeCommentsDetail}` : '')) : '—' },
-              { label: 'Creatives Tested', value: creativesCount || '—' },
-              { label: 'Creative Approaches', value: creativesApproach || '—' },
-              { label: 'Campaign Model', value: campaignModel + (campaignModelDetails ? ` (${campaignModelDetails})` : '') },
-              { label: 'Testing Structure', value: testingStructure || '—' },
-              { label: 'Optimization Strategy', value: optimizationStrategy || '—' },
-            ].map(({ label, value }) => (
-              <div key={label} className="bg-gray-900/50 border border-gray-800 rounded-lg p-3">
-                <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">{label}</div>
-                <div className="text-gray-200 text-sm whitespace-pre-line">{value || '—'}</div>
+            <div className="space-y-3">
+              <MinimalInput label="1. Which GEO are you currently working with?" value={geo} onChange={setGeo} />
+              
+              <MinimalTextarea label="2. What are the top games in SPY tools for your target GEO?" value={topGames} onChange={setTopGames} minH="min-h-[60px]" />
+              
+              <MinimalTextarea label="3. Which casino games did you choose to test?" value={chosenGames} onChange={setChosenGames} minH="min-h-[60px]" />
+              
+              <div className="bg-gray-900/30 border border-gray-800/50 rounded-lg p-4">
+                <MultiFileUploadZone label="4. Traffic calculations (optional)" files={trafficCalcFiles} onSelect={e => handleMultiFileSelect(e, setTrafficCalcFiles)} onRemove={i => removeMultiFile(i, setTrafficCalcFiles)} />
               </div>
-            ))}
 
-            {audiences.some(a => a.trim()) && (
-              <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-3">
-                <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">Audiences</div>
-                {audiences.filter(a => a.trim()).map((a, i) => (
-                  <div key={i} className="text-gray-200 text-sm mb-1">• Audience {i + 1}: {a}</div>
-                ))}
+              <MinimalSelect label="5. Are you running a split test with at least 2 different PWA designs?" value={splitTest} onChange={setSplitTest} options={['Yes, 2+ designs', 'No, using only one']} />
+              
+              <MinimalInput label="6. Link to your PWA app or split test" value={pwaLink} onChange={setPwaLink} />
+              
+              <div className="bg-gray-900/30 border border-gray-800/50 rounded-lg p-4">
+                <div className="mb-2">
+                  <span className="text-gray-400 text-sm font-medium">7. Screenshots of your Fan Page design (avatar, cover, name, description, posts) *</span>
+                </div>
+                <MultiFileUploadZone label="Upload fan page screenshots" files={fanPageScreenshots} onSelect={e => handleMultiFileSelect(e, setFanPageScreenshots)} onRemove={i => removeMultiFile(i, setFanPageScreenshots)} accept="image/*" isValid={fanPageScreenshots.length > 0} />
               </div>
-            )}
 
-            <FilePreviewList label="📊 Traffic Calculations" files={trafficCalcFiles} />
-            <FilePreviewList label="📄 Fan Page Screenshots" files={fanPageScreenshots} />
-            <FilePreviewList label="🎨 Creative Examples" files={creativeExamples} />
-            <FilePreviewList label="📸 Case Screenshots" files={caseScreenshots} />
-
-            {trafficCalcFiles.length === 0 && fanPageScreenshots.length === 0 && creativeExamples.length === 0 && caseScreenshots.length === 0 && (
-              <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-3">
-                <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">Files</div>
-                <div className="text-gray-500 text-sm">No files attached</div>
+              <div className="bg-gray-900/30 border border-gray-800/50 rounded-lg p-4 hover:border-gray-700 transition-colors group">
+                <div className="text-gray-400 text-sm font-medium mb-2 flex justify-between pr-2">
+                  <span>8. Does your advertising attract negative comments?</span>
+                  <Pencil className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500" />
+                </div>
+                <select className="w-full bg-transparent text-gray-200 text-base focus:outline-none appearance-none cursor-pointer mb-3" value={negativeCommentsOption} onChange={e => setNegativeCommentsOption(e.target.value)}>
+                  <option value="" disabled className="bg-gray-900 text-gray-500">Select option...</option>
+                  {['Yes, a lot of negative comments', 'Yes, but rarely', 'No, comments are neutral/positive', 'Not tracking'].map(opt => <option key={opt} value={opt} className="bg-gray-900 text-gray-200">{opt}</option>)}
+                </select>
+                <input className="w-full bg-transparent text-gray-400 text-sm focus:outline-none placeholder-gray-700 border-t border-gray-800/50 pt-3" value={negativeCommentsDetail} onChange={e => setNegativeCommentsDetail(e.target.value)} placeholder="Additional details (optional)..." />
               </div>
-            )}
+
+              <MinimalInput label="9. How many different creatives have you tested?" value={creativesCount} onChange={setCreativesCount} />
+              
+              <MinimalTextarea label="10. Які підходи в креативи ви протестували?" value={creativesApproach} onChange={setCreativesApproach} minH="min-h-[60px]" />
+              
+              <div className="bg-gray-900/30 border border-gray-800/50 rounded-lg p-4">
+                <MultiFileUploadZone label="Creative examples (optional)" files={creativeExamples} onSelect={e => handleMultiFileSelect(e, setCreativeExamples)} onRemove={i => removeMultiFile(i, setCreativeExamples)} accept="image/*,video/*" />
+              </div>
+
+              <div className="bg-gray-900/30 border border-gray-800/50 rounded-lg p-4 hover:border-gray-700 transition-colors group">
+                <div className="text-gray-400 text-sm font-medium mb-2 flex justify-between pr-2">
+                  <span>11. Which campaign model do you use?</span>
+                  <Pencil className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500" />
+                </div>
+                <select className="w-full bg-transparent text-gray-200 text-base focus:outline-none appearance-none cursor-pointer mb-3" value={campaignModel} onChange={e => setCampaignModel(e.target.value)}>
+                  <option value="" disabled className="bg-gray-900 text-gray-500">Select option...</option>
+                  {['ABO', 'CBO', 'Mix'].map(opt => <option key={opt} value={opt} className="bg-gray-900 text-gray-200">{opt}</option>)}
+                </select>
+                <input className="w-full bg-transparent text-gray-400 text-sm focus:outline-none placeholder-gray-700 border-t border-gray-800/50 pt-3" value={campaignModelDetails} onChange={e => setCampaignModelDetails(e.target.value)} placeholder="Model details (optional)..." />
+              </div>
+
+              <MinimalInput label="12. What structure do you use for testing creatives?" value={testingStructure} onChange={setTestingStructure} />
+              
+              <div className="bg-gray-900/30 border border-gray-800/50 rounded-lg p-4 hover:border-gray-700 transition-colors group">
+                <div className="text-gray-400 text-sm font-medium mb-3 flex justify-between pr-2">
+                  <span>13. Describe the audiences you have tested</span>
+                  <Pencil className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500" />
+                </div>
+                <div className="space-y-3">
+                  {audiences.map((a, i) => (
+                    <div key={i} className="flex items-start gap-3 bg-gray-900/50 p-3 rounded-md border border-gray-800/50">
+                      <span className="text-gray-500 text-sm mt-0.5">{i + 1}.</span>
+                      <textarea className="w-full bg-transparent text-gray-200 text-base focus:outline-none resize-none min-h-[40px] placeholder-gray-700" value={a} onChange={e => updateAudience(i, e.target.value)} placeholder={`Audience description...`} />
+                      {audiences.length > 1 && (
+                        <button onClick={() => removeAudience(i)} className="text-gray-500 hover:text-red-400 p-1 bg-gray-800/50 rounded">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <button onClick={addAudience} className="mt-4 text-sm font-medium text-blue-400 hover:text-blue-300 flex items-center gap-1.5 px-2 py-1 bg-blue-500/10 rounded-md transition-colors">
+                  <Plus className="w-3.5 h-3.5" /> Add Audience
+                </button>
+              </div>
+
+              <MinimalTextarea label="14. Describe the optimization strategy from the Road Map you are using" value={optimizationStrategy} onChange={setOptimizationStrategy} minH="min-h-[80px]" />
+
+              <div className="bg-gray-900/30 border border-gray-800/50 rounded-lg p-4">
+                <div className="mb-2">
+                  <span className="text-gray-400 text-sm font-medium">15. Upload full screenshots of the case with metrics</span>
+                </div>
+                <MultiFileUploadZone label="Case screenshots *" files={caseScreenshots} onSelect={e => handleMultiFileSelect(e, setCaseScreenshots)} onRemove={i => removeMultiFile(i, setCaseScreenshots)} isValid={caseScreenshots.length > 0} accept="image/*" />
+              </div>
+            </div>
           </div>
         );
 

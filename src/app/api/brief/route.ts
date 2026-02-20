@@ -96,6 +96,79 @@ export async function POST(request: Request) {
       }
     }
 
+    // Helper to safely escape HTML for Telegram
+    const escapeHtml = (text: string) => {
+      if (!text) return '';
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    };
+
+    if (!userId || !authHeader) {
+      throw new Error("Missing user token or ID");
+    }
+    const token = authHeader.replace('Bearer ', '');
+    const authClient = createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '', {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    });
+
+    // Helper to upload file to Supabase Storage and get public URL
+    const uploadToStorage = async (file: File, folder: string): Promise<string | null> => {
+      try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${userId}/${folder}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const { error: uploadError } = await authClient.storage
+          .from('brief_files')
+          .upload(fileName, file, { upsert: false });
+        
+        if (uploadError) {
+          console.error(`Error uploading ${file.name}:`, uploadError);
+          return null;
+        }
+
+        const { data: publicUrlData } = authClient.storage
+          .from('brief_files')
+          .getPublicUrl(fileName);
+        
+        return publicUrlData.publicUrl;
+      } catch (err) {
+        console.error(`Failed to process file ${file.name}:`, err);
+        return null;
+      }
+    };
+
+    // Extract files from formData
+    const extractFiles = (prefix: string): File[] => {
+      const files: File[] = [];
+      let idx = 0;
+      while (formData.get(`${prefix}_${idx}`)) {
+        const f = formData.get(`${prefix}_${idx}`) as File;
+        if (f && f.size > 0) files.push(f);
+        idx++;
+      }
+      return files;
+    };
+
+    const trafficCalcFiles = extractFiles('trafficCalcFile');
+    const fanPageFiles = extractFiles('fanPageScreenshot');
+    const creativeFiles = extractFiles('creativeExample');
+    const caseFiles = extractFiles('caseScreenshot');
+
+    // Upload files concurrently
+    const [trafficCalcUrls, fanPageUrls, creativeUrls, caseUrls] = await Promise.all([
+      Promise.all(trafficCalcFiles.map(f => uploadToStorage(f, 'traffic_calcs'))),
+      Promise.all(fanPageFiles.map(f => uploadToStorage(f, 'fan_pages'))),
+      Promise.all(creativeFiles.map(f => uploadToStorage(f, 'creatives'))),
+      Promise.all(caseFiles.map(f => uploadToStorage(f, 'cases'))),
+    ]);
+
     // Save to Database
     const briefData = {
       geo,
@@ -114,84 +187,80 @@ export async function POST(request: Request) {
       campaignModelDetails,
       testingStructure,
       optimizationStrategy,
-      audiences
+      audiences,
+      files: {
+        traffic_calculations: trafficCalcUrls.filter(Boolean),
+        fan_pages: fanPageUrls.filter(Boolean),
+        creatives: creativeUrls.filter(Boolean),
+        cases: caseUrls.filter(Boolean),
+      }
     };
 
     try {
-      await serverSupabase.from('submitted_briefs').insert({
+      const { error: dbInsertError } = await authClient.from('submitted_briefs').insert({
         user_id: userId,
         data: briefData
       });
-    } catch (dbError) {
+
+      if (dbInsertError) {
+        console.error('Explicit Supabase Insert Error:', dbInsertError);
+        throw new Error(`Database insert failed: ${dbInsertError.message}`);
+      }
+    } catch (dbError: any) {
       console.error('Failed to save brief to database:', dbError);
-      // We don't throw here to ensure Telegram notification still goes through even if DB fails
+      // We still want to send the Telegram message even if DB fails,
+      // but we should probably inform the client that DB saving failed if it's critical.
+      // For now, let's keep it non-blocking but heavily logged.
     }
 
     // Build message
-    const message = `📋 <b>Новий бриф від ${userName}</b>
+    const message = `📋 <b>Новий бриф від ${escapeHtml(userName)}</b>
 
 ━━━━━━━━━━━━━━━━━━━━
 <b>🌍 Блок 1. Гео та оффер</b>
 ━━━━━━━━━━━━━━━━━━━━
 
-<b>1. GEO:</b> ${geo}
+<b>1. GEO:</b> ${escapeHtml(geo)}
 
 <b>2. Топ ігри в SPY сервісах:</b>
-${topGames}
+${escapeHtml(topGames)}
 
 <b>3. Казино-ігри для тесту:</b>
-${chosenGames}
+${escapeHtml(chosenGames)}
 
-<b>4. Розрахунки:</b>
-• CPC: ${cpc}
-• CPL: ${cpl}
-• CPR: ${cpr}
-• CPA: ${cpa}
+<b>4. Спліт тест PWA:</b> ${escapeHtml(splitTest)}
+<b>5. Посилання на PWA:</b> ${escapeHtml(pwaLink) || 'Не вказано'}
 
 ━━━━━━━━━━━━━━━━━━━━
-<b>📱 Блок 2. PWA та воронка</b>
+<b>📄 Блок 2. Fan Page</b>
 ━━━━━━━━━━━━━━━━━━━━
 
-<b>5. Спліт тест PWA:</b> ${splitTest}
-<b>6. Посилання на PWA:</b> ${pwaLink || 'Не вказано'}
+<b>6. Негативні коментарі:</b>
+${escapeHtml(negativeComments)}
 
 ━━━━━━━━━━━━━━━━━━━━
-<b>📄 Блок 3. Fan Page</b>
+<b>🎨 Блок 3. Креативи</b>
 ━━━━━━━━━━━━━━━━━━━━
 
-<b>8. Негативні коментарі:</b>
-${negativeComments}
+<b>7. Протестовано креативів:</b> ${escapeHtml(creativesCount)}
+<b>8. Підходи в креативах:</b>
+${escapeHtml(creativesApproach)}
 
 ━━━━━━━━━━━━━━━━━━━━
-<b>🎨 Блок 4. Креативи</b>
+<b>📊 Блок 4. Кампанії Facebook</b>
 ━━━━━━━━━━━━━━━━━━━━
 
-<b>9. Протестовано креативів:</b> ${creativesCount}
-<b>10. Підходи в креативах:</b>
-${creativesApproach}
-
-━━━━━━━━━━━━━━━━━━━━
-<b>📊 Блок 5. Кампанії Facebook</b>
-━━━━━━━━━━━━━━━━━━━━
-
-<b>11. Модель:</b> ${campaignModel}${campaignModelDetails ? ` (${campaignModelDetails})` : ''}
-<b>12. Структура тестування:</b> ${testingStructure}
-<b>13. Аудиторії:</b>
-${audiences.length > 0 ? audiences.map((a, idx) => `• Аудиторія ${idx + 1}: ${a}`).join('\n') : 'Не вказано'}
-<b>14. Стратегія оптимізації:</b>
-${optimizationStrategy}`;
+<b>9. Модель:</b> ${escapeHtml(campaignModel)}${campaignModelDetails ? ` (${escapeHtml(campaignModelDetails)})` : ''}
+<b>10. Структура тестування:</b> ${escapeHtml(testingStructure)}
+<b>11. Аудиторії:</b>
+${audiences.length > 0 ? audiences.map((a, idx) => `• Аудиторія ${idx + 1}: ${escapeHtml(a)}`).join('\n') : 'Не вказано'}
+<b>12. Стратегія оптимізації:</b>
+${escapeHtml(optimizationStrategy)}`;
 
     // Send main message
     await sendTelegramMessage(message);
 
     // Handle file uploads - traffic calc files (multiple)
-    const trafficCalcFiles: File[] = [];
-    let tci = 0;
-    while (formData.get(`trafficCalcFile_${tci}`)) {
-      const f = formData.get(`trafficCalcFile_${tci}`) as File;
-      if (f && f.size > 0) trafficCalcFiles.push(f);
-      tci++;
-    }
     for (const file of trafficCalcFiles) {
       const caption = `<b>📊 Розрахунки по трафіку</b>\nВід: ${userName}`;
       if (isImageFile(file.name)) {
@@ -202,13 +271,6 @@ ${optimizationStrategy}`;
     }
 
     // Fan Page screenshots (multiple)
-    const fanPageFiles: File[] = [];
-    let fpi = 0;
-    while (formData.get(`fanPageScreenshot_${fpi}`)) {
-      const f = formData.get(`fanPageScreenshot_${fpi}`) as File;
-      if (f && f.size > 0) fanPageFiles.push(f);
-      fpi++;
-    }
     for (const file of fanPageFiles) {
       const caption = `<b>📄 Скріншот Fan Page</b>\nВід: ${userName}`;
       if (isImageFile(file.name)) {
@@ -219,13 +281,6 @@ ${optimizationStrategy}`;
     }
 
     // Creative examples (multiple files possible)
-    const creativeFiles: File[] = [];
-    let ci = 0;
-    while (formData.get(`creativeExample_${ci}`)) {
-      const f = formData.get(`creativeExample_${ci}`) as File;
-      if (f && f.size > 0) creativeFiles.push(f);
-      ci++;
-    }
     for (const file of creativeFiles) {
       const caption = `<b>🎨 Приклад креативу</b>\nВід: ${userName}`;
       if (isImageFile(file.name)) {
@@ -236,13 +291,6 @@ ${optimizationStrategy}`;
     }
 
     // Case screenshots (multiple files)
-    const caseFiles: File[] = [];
-    let csi = 0;
-    while (formData.get(`caseScreenshot_${csi}`)) {
-      const f = formData.get(`caseScreenshot_${csi}`) as File;
-      if (f && f.size > 0) caseFiles.push(f);
-      csi++;
-    }
     for (const file of caseFiles) {
       const caption = `<b>📸 Кейс для розбору</b>\nВід: ${userName}`;
       if (isImageFile(file.name)) {
@@ -253,10 +301,10 @@ ${optimizationStrategy}`;
     }
 
     return NextResponse.json({ success: true, message: 'Brief submitted successfully' });
-  } catch (error) {
-    console.error('Brief submission error:', error);
+  } catch (error: any) {
+    console.error('Brief submission error details:', error?.message, error?.stack);
     return NextResponse.json(
-      { success: false, message: 'Failed to submit brief' },
+      { success: false, message: 'Failed to submit brief', error: error?.message },
       { status: 500 }
     );
   }
